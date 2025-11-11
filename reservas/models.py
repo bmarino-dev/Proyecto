@@ -3,18 +3,19 @@ import uuid
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from django.core.validators import RegexValidator
+from django.utils import timezone
 
 
 # Create your models here.
 
 #clase sustituida de user
 class User(AbstractUser):
-    ROLE_CHOICES = (("customer", "Customer"), ("business", "Business"), ("staff", "Staff"))
+    ROLE_CHOICES = (("customer", "Cliente"), ("business", "Negocio"), ("staff", "Staff"))
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="customer")
 
 class Customer(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_profile")
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="customer_profile")
     phone = models.CharField(max_length=50, blank=True, validators= [RegexValidator(r'^\+?\d{8,15}$', message="Debe ser un número de teléfono válido")])
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -36,14 +37,15 @@ class Customer(models.Model):
 class Resource(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=150)
-    capacity = models.PositiveIntegerField(default=1)
+    address = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     active = models.BooleanField(default=True)
     
     
 class Reservation(models.Model):
-    STATUS_CHOISES = (("pending" , "pendiente"), ("confirmed", "confirmado"), ("cancelled", "cancelado"))
-    status = models.CharField(max_length=20, choices=STATUS_CHOISES, default="pending")
+    STATUS_CHOICES = (("pending" , "pendiente"), ("confirmed", "confirmado"), ("cancelled", "cancelado"))
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="reservations")
     
