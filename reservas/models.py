@@ -36,7 +36,7 @@ class Customer(models.Model):
 class Business(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="business_profile")
-    phone = models.CharField(max_length=20, blank=True, validators= [RegexValidator(r'^\+?\d{8,15}$', message="Debe ser un número de teléfono válido")])
+    phone = models.CharField(max_length=20, blank=True, validators=[RegexValidator(r'^\+?\d{8,15}$', message="Debe ser un número de teléfono válido")])
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
@@ -49,6 +49,24 @@ class Business(models.Model):
     @property
     def full_name(self):
         return f"{self.user.first_name} {self.user.last_name}".strip()    
+
+
+class BlackOutDates(models.Model):
+    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="blackout_dates")
+    date = models.DateField()
+    reason = models.CharField(max_length=30, blank=True, null=True)
+    
+    class Meta:
+        ordering = ["business", "date"]
+        verbose_name = "Blackout date"
+        verbose_name_plural = "Blackout dates"
+        
+    
+    def __str__(self):
+        if self.reason:
+            return f"{self.business} - {self.date} - {self.reason}"
+        return f"{self.business} - {self.date}"
+    
     
     
 WEEKDAY_CHOICES = [
@@ -70,7 +88,7 @@ class ResourceTemplate(models.Model):
     start_time = models.TimeField(help_text="Hora de inicio (ej: 09:00)")
     duration = models.DurationField(help_text="Duración del slot (ej: 00:30:00)")
     active = models.BooleanField(default=True)
-    end_time = models.DateTimeField(help_text="Fecha y hora de finalización")
+    end_time = models.TimeField(help_text="Fecha y hora de finalización")
     start_date = models.DateField(null=True, blank=True, help_text="Desde qué fecha crear slots (inclusive)")
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
     
@@ -79,17 +97,17 @@ class ResourceTemplate(models.Model):
         ordering = ["business", "weekday", "start_time"]
         
     def __str__(self):
-        return f"{self.business} - {self.name} {self.get_weekday.display()} {self.start_time}"
+        return f"{self.business} - {self.name} {self.get_weekday_display()} {self.start_time}"
 
 
 class ResourceSlot(models.Model):
-    id = models.UUIDField(primary_key = True, default = uuid.uuid4, editable = False)
-    template = models.ForeignKey(ResourceTemplate, on_delete = models.CASCADE, related_name = "slots")
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    template = models.ForeignKey(ResourceTemplate, on_delete=models.CASCADE, related_name="slots")
     date = models.DateField()
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
-    active = models.BooleanField(default = True)
-    created_at = models.DateTimeField(auto_now_add = True, editable = False)
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True, editable=False)
     
     class Meta:
         #no puede haber dos registros con estos 3 campos iguales
@@ -125,7 +143,7 @@ class Reservation(models.Model):
     customer = models.CharField(max_length=100, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     address = models.CharField(max_length=255)
-    phone = models.CharField(max_length=20, blank=True, validators= [RegexValidator(r'^\+?\d{8,15}$', message="Debe ser un número de teléfono válido")])
+    phone = models.CharField(max_length=20, blank=True, validators=[RegexValidator(r'^\+?\d{8,15}$', message="Debe ser un número de teléfono válido")])
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
     
     def  clean(self):
