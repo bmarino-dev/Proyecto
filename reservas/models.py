@@ -1,18 +1,20 @@
-from django.db import models
+from django.db import models, transaction
 import uuid
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 
 
 
-#clase sustituida de user
+#clase que hereda de User original
 class User(AbstractUser):
     ROLE_CHOICES = (("customer", "Cliente"), ("business", "Negocio"), ("staff", "Staff"))
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="business")
 
+#cliente OneToOne con User
 class Customer(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="customer_profile")
@@ -30,7 +32,7 @@ class Customer(models.Model):
     def full_name(self):
         return f"{self.user.first_name} {self.user.last_name}".strip()
     
-#Perfil de negocios    
+#Perfil de negocios (OneToOne con User)    
 class Business(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="business_profile")
@@ -59,7 +61,7 @@ WEEKDAY_CHOICES = [
     (6, "Domingo"),
 ]    
     
-    
+#Reserva especifica, ej: lunes de 9:00 a 10:00  
 class ResourceTemplate(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="resource_template")
@@ -72,21 +74,67 @@ class ResourceTemplate(models.Model):
     start_date = models.DateField(null=True, blank=True, help_text="Desde qué fecha crear slots (inclusive)")
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
     
+    #ordenamos la tabla
     class Meta:
         ordering = ["business", "weekday", "start_time"]
         
     def __str__(self):
         return f"{self.business} - {self.name} {self.get_weekday.display()} {self.start_time}"
+
+
+class ResourceSlot(models.Model):
+    id = models.UUIDField(primary_key = True, default = uuid.uuid4, editable = False)
+    template = models.ForeignKey(ResourceTemplate, on_delete = models.CASCADE, related_name = "slots")
+    date = models.DateField()
+    start_datetime = models.DateTimeField()
+    end_datetime = models.DateTimeField()
+    active = models.BooleanField(default = True)
+    created_at = models.DateTimeField(auto_now_add = True, editable = False)
+    
+    class Meta:
+        #no puede haber dos registros con estos 3 campos iguales
+        unique_together = ("template", "date", "start_datetime")
         
+        #creamos indices para acelerar las consultas
+        indexes = [
+            models.Index(fields=["template", "date"]),
+            models.Index(fields=["start_datetime"])
+        ]
+        ordering = ["start_datetime"]
+    
+    def clean(self):
+        if self.end_datetime <= self.start_datetime:
+            raise ValidationError("end_datetime debe ser posterior a start_datetime")
+    
+    def save(self, *args, **kwargs):
+        #asegurarnos que end_datetime coincide con start + duration de la plantilla
+        if self.template and self.start_datetime:
+            expected_end = self.start_datetime + self.template.duration
+            self.end_datetime = expected_end
+        super().save(*args, **kwargs)                 
+        
+    def __str__(self):
+        return f"{self.template.business} - {self.template.name} - {self.start_datetime.isoformat()}"
     
     
-#modelo de cada reserva    
+#Reserva asociada 1:1 a un slot concreto  
 class Reservation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     STATUS_CHOICES = (("pending" , "pendiente"), ("confirmed", "confirmado"), ("cancelled", "cancelado"))
+    slot = models.OneToOneField(ResourceSlot, on_delete=models.CASCADE, related_name="reservation")
+    customer = models.CharField(max_length=100, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
-    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="reservations")
     address = models.CharField(max_length=255)
     phone = models.CharField(max_length=20, blank=True, validators= [RegexValidator(r'^\+?\d{8,15}$', message="Debe ser un número de teléfono válido")])
+    created_at = models.DateTimeField(auto_now_add=True, editable=False)
     
+    def  clean(self):
+        #chequeo rapido: la fecha del slot debe ser futura
+        if self.slot.start_datetime < timezone.now():
+            raise ValidationError("No se puede reservar un slot en el pasado.")
     
+    def save(self, *args, **kwargs):
+        #guardado utilizando clean
+        with transaction.atomic():
+            self.full_clean()
+            super().save(*args, **kwargs)
