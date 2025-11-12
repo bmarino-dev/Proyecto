@@ -73,7 +73,10 @@ class ResourceTemplate(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
     
     class Meta:
-        ordering = ["business", "weekday"]
+        ordering = ["business", "weekday", "start_time"]
+        
+    def __str__(self):
+        return f"{self.business} - {self.name} {self.get_weekday.display()} {self.start_time}"
         
     
     
