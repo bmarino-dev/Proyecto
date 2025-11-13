@@ -53,19 +53,24 @@ class Business(models.Model):
 
 class BlackOutDates(models.Model):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="blackout_dates")
-    date = models.DateField()
+    start_date = models.DateField()
+    end_date = models.DateField(blank=True, null=True)
     reason = models.CharField(max_length=30, blank=True, null=True)
     
     class Meta:
-        ordering = ["business", "date"]
+        ordering = ["business", "start_date"]
         verbose_name = "Blackout date"
         verbose_name_plural = "Blackout dates"
         
     
     def __str__(self):
-        if self.reason:
-            return f"{self.business} - {self.date} - {self.reason}"
-        return f"{self.business} - {self.date}"
+        if self.end_date and self.end_date != self.start_date:
+            return f"{self.business.name}: {self.start_date} → {self.end_date}"
+        return f"{self.business.name}: {self.start_date}"
+    
+    def clean(self):
+        if self.end_date and self.end_date < self.start_date:
+            raise ValidationError("La fecha de fin no puede ser anterior a la de inicio.")
     
     
     
