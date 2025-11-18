@@ -49,7 +49,6 @@ def generate_slots_for_template(template, days: int=DEFAULT_GENERATE_DAYS):
                 start_time = template.start_time
                 end_time = template.end_time
                 slot_start_time = start_time
-                print(curr)
                 #crea slots mientras start_time <= end_time -duration
                 while (datetime.combine(curr, slot_start_time) + slot_duration).time() <= end_time:
                     start_dt = _combine_aware(curr, slot_start_time)
@@ -63,7 +62,7 @@ def generate_slots_for_template(template, days: int=DEFAULT_GENERATE_DAYS):
                     
                     naive_dt = datetime.combine(curr, slot_start_time) + slot_duration
                     slot_start_time = naive_dt.time()
-            print(curr)
+                    
         curr += timedelta(days=1)
      
     #mientras hayan slots guardamos estos con bulk_create y manualmente les agregamos el end_datetime    
