@@ -62,11 +62,11 @@ class BlackOutDates(models.Model):
         verbose_name = "Blackout date"
         verbose_name_plural = "Blackout dates"
         
-    
+    #POSIBLE CORRECCION EN __STR__
     def __str__(self):
         if self.end_date and self.end_date != self.start_date:
-            return f"{self.business.name}: {self.start_date} → {self.end_date}"
-        return f"{self.business.name}: {self.start_date}"
+            return f"{self.business.__str__}: {self.start_date} → {self.end_date}"
+        return f"{self.business.__str__}: {self.start_date}"
     
     def clean(self):
         if self.end_date and self.end_date < self.start_date:
