@@ -9,9 +9,7 @@ User = get_user_model()
 PHONE_REGEX = re.compile(r'^\+?\d{8,15}$')
 
 
-# ─────────────────────────────────────────
 # AUTH
-# ─────────────────────────────────────────
 
 class SignupSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(write_only=True, required=True)
@@ -51,9 +49,8 @@ class SignupSerializer(serializers.ModelSerializer):
         return user
 
 
-# ─────────────────────────────────────────
+
 # PACIENTES
-# ─────────────────────────────────────────
 
 class PatientSerializer(serializers.ModelSerializer):
     class Meta:
@@ -82,9 +79,7 @@ class PatientSerializer(serializers.ModelSerializer):
         return Patient.objects.create(business=business, **validated_data)
 
 
-# ─────────────────────────────────────────
 # SLOTS
-# ─────────────────────────────────────────
 
 class ResourceSlotSerializer(serializers.ModelSerializer):
     is_available = serializers.BooleanField(read_only=True)
@@ -95,9 +90,7 @@ class ResourceSlotSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-# ─────────────────────────────────────────
 # RESERVAS
-# ─────────────────────────────────────────
 
 class ReservationCreateSerializer(serializers.ModelSerializer):
     """

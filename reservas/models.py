@@ -7,9 +7,8 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 
-# ─────────────────────────────────────────
+
 # USUARIOS
-# ─────────────────────────────────────────
 
 class User(AbstractUser):
     ROLE_CHOICES = (
@@ -20,10 +19,8 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="business")
 
 
-# ─────────────────────────────────────────
-# PERFIL DEL PROFESIONAL (antes Business)
+# PERFIL DEL PROFESIONAL
 # Representa un psicólogo, nutricionista, fisioterapeuta, etc.
-# ─────────────────────────────────────────
 
 SPECIALTY_CHOICES = [
     ("psychology", "Psicología"),
@@ -63,11 +60,10 @@ class Business(models.Model):
         return f"{self.user.first_name} {self.user.last_name}".strip()
 
 
-# ─────────────────────────────────────────
 # PACIENTE
 # Contacto registrado por el profesional.
 # No tiene login propio.
-# ─────────────────────────────────────────
+
 
 class Patient(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -102,9 +98,7 @@ class Patient(models.Model):
         return f"{self.first_name} {self.last_name}".strip()
 
 
-# ─────────────────────────────────────────
 # FECHAS BLOQUEADAS
-# ─────────────────────────────────────────
 
 class BlackOutDates(models.Model):
     business = models.ForeignKey(
@@ -131,11 +125,9 @@ class BlackOutDates(models.Model):
             raise ValidationError("La fecha de fin no puede ser anterior a la de inicio.")
 
 
-# ─────────────────────────────────────────
 # PLANTILLA DE SLOTS
 # Define los horarios recurrentes del profesional
 # ej: Lunes de 9:00 a 12:00 con slots de 50 minutos
-# ─────────────────────────────────────────
 
 WEEKDAY_CHOICES = [
     (0, "Lunes"),
@@ -174,10 +166,8 @@ class ResourceTemplate(models.Model):
         return f"{self.business} - {self.name} {self.get_weekday_display()} {self.start_time}"
 
 
-# ─────────────────────────────────────────
 # SLOT CONCRETO
 # Una hora específica en una fecha específica
-# ─────────────────────────────────────────
 
 class ResourceSlot(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -223,11 +213,9 @@ class ResourceSlot(models.Model):
             return True
 
 
-# ─────────────────────────────────────────
 # RESERVA
 # Vincula un slot con un paciente.
 # Incluye el flujo de confirmación por email.
-# ─────────────────────────────────────────
 
 class Reservation(models.Model):
     STATUS_CHOICES = (
