@@ -19,7 +19,7 @@ class SignupSerializer(serializers.ModelSerializer):
         fields = ("username", "email", "first_name", "last_name", "role", "password", "phone")
     
     #si el telefono no es valido tira error
-    def validate_phone(slef, value):
+    def validate_phone(self, value):
         if not PHONE_REGEX.match(value):
             raise serializers.ValidationError("Formato del telefono invalido")
         return value
