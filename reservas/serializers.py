@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.db import transaction
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from .models import Business, Patient, ResourceTemplate, ResourceSlot, Reservation
+from .models import Business, Patient, ResourceTemplate, ResourceSlot, Reservation, BlackOutDates
 import re
 
 User = get_user_model()
@@ -88,6 +88,24 @@ class ResourceSlotSerializer(serializers.ModelSerializer):
         model = ResourceSlot
         fields = ("id", "date", "start_datetime", "end_datetime", "is_available")
         read_only_fields = fields
+
+
+# BLACKOUT DATES
+
+class BlackOutDateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BlackOutDates
+        fields = ("id", "start_date", "end_date", "reason")
+
+    def validate(self, data):
+        if data.get('end_date') and data.get('start_date') and data['end_date'] < data['start_date']:
+            raise serializers.ValidationError({"end_date": "La fecha de fin no puede ser anterior a la de inicio."})
+        return data
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        validated_data['business'] = request.user.business_profile
+        return super().create(validated_data)
 
 
 # RESERVAS

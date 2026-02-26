@@ -9,6 +9,10 @@ urlpatterns = [
     path("patients/", views.PatientListCreateView.as_view(), name="patient-list"),
     path("patients/<uuid:pk>/", views.PatientDetailView.as_view(), name="patient-detail"),
 
+    # Fechas Bloqueadas
+    path("blackouts/", views.BlackOutDateListCreateView.as_view(), name="blackout-list"),
+    path("blackouts/<uuid:pk>/", views.BlackOutDateDetailView.as_view(), name="blackout-detail"),
+
     # Slots disponibles
     path("slots/", views.AvailableSlotListView.as_view(), name="slot-list"),
 

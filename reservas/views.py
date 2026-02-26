@@ -4,13 +4,14 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
-from .models import Patient, ResourceSlot, Reservation
+from .models import Patient, ResourceSlot, Reservation, BlackOutDates
 from .serializers import (
     SignupSerializer,
     PatientSerializer,
     ResourceSlotSerializer,
     ReservationCreateSerializer,
     ReservationDetailSerializer,
+    BlackOutDateSerializer,
 )
 
 
@@ -79,6 +80,33 @@ class AvailableSlotListView(generics.ListAPIView):
         # Solo devolvemos los disponibles
         available_ids = [slot.id for slot in qs if slot.is_available]
         return ResourceSlot.objects.filter(id__in=available_ids)
+
+
+# BLACKOUT DATES (Fechas Bloqueadas)
+
+class BlackOutDateListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /blackouts/       → Lista todas las fechas bloqueadas
+    POST /blackouts/       → Crea una nueva fecha bloqueada
+    """
+    serializer_class = BlackOutDateSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return BlackOutDates.objects.filter(business=self.request.user.business_profile)
+
+
+class BlackOutDateDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET    /blackouts/:id/  → Detalle
+    PATCH  /blackouts/:id/  → Actualizar
+    DELETE /blackouts/:id/  → Borrar
+    """
+    serializer_class = BlackOutDateSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return BlackOutDates.objects.filter(business=self.request.user.business_profile)
 
 
 # RESERVAS
