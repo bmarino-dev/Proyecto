@@ -1,2 +1,25 @@
-".venv/" 
-"__pycache__/" 
+# Entorno virtual
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Django
+db.sqlite3
+*.log
+media/
+
+# Variables de entorno — NUNCA subir esto al repo
+.env
+
+# IDEs
+.vscode/
+.idea/
