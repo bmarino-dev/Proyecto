@@ -98,4 +98,19 @@ A continuación la lista principal de los endpoints disponibles. Todos los endpo
 
 ---
 
-Bruno Marino.
+---
+
+## 🤖 Sobre este Proyecto y el Uso de IA
+
+Este backend fue desarrollado como un MVP para consolidar y demostrar mis conocimientos en Python, Django y construcción de APIs RESTful. 
+
+Para alcanzar el nivel de robustez y buenas prácticas presentes en este código, he utilizado **inteligencia artificial como herramienta de asistencia y *pair programming***. Mi enfoque no fue generar código de forma ciega, sino utilizar la IA como un mentor interactivo:
+1. **Diseño y Arquitectura:** Escribí la base y la lógica estructural del proyecto.
+2. **Cuestionamiento Activo:** En lugar de copiar soluciones, cuestioné cada implementación ("¿por qué JWT?", "¿cómo funciona realmente la paginación?", "¿por qué este test falla en esta zona horaria?").
+3. **Refactorización:** Apliqué mejoras sugeridas por la IA (como separar configuraciones en `.env`, optimizar `.gitignore` y agregar endpoints faltantes) solo después de estudiar y comprender profundamente qué problema resolvían.
+
+El objetivo de este repositorio es reflejar una API funcional, pero principalmente documentar un **proceso de aprendizaje activo**, demostrando mi capacidad para leer, auditar, depurar e integrar soluciones de nivel profesional en un flujo de trabajo moderno rodeado de nuevas herramientas.
+
+---
+
+*Bruno Marino.*
