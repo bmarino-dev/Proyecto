@@ -1,0 +1,43 @@
+# ESTADO DEL PROYECTO DE RESERVAS
+
+## Resumen del Estado Actual: "Core Funcional de Reserva (MVP)"
+El proyecto tiene una base sólida y bien estructurada siguiendo las mejores prácticas de Django y DRF.
+
+1.  **Arquitectura de Datos Completa**:
+    *   **Gestión de Usuarios**: Usa un modelo personalizado (`User`) con roles y perfiles específicos para profesionales (`Business`).
+    *   **Sistema de Agendamiento**: Las plantillas definen el horario semanal y los slots son las instancias reales de reserva.
+    *   **Validaciones**: Implementadas validaciones críticas (evitar reservas pasadas, unicidad de pacientes, respeto a fechas bloqueadas).
+
+2.  **Lógica de Negocio**:
+    *   **Generador de Slots**: Función en `utils.py` que genera turnos a futuro evitando días bloqueados.
+    *   **Flujo de Confirmación**: Sistema de confirmación pública mediante Token UUID (paciente confirma/cancela vía email sin login).
+
+3.  **Infraestructura Técnica**:
+    *   Uso de UUIDs para IDs (seguridad y escalabilidad).
+    *   Autenticación mediante JWT (SimpleJWT).
+    *   Tests unitarios básicos para registro y generación de slots.
+
+---
+
+## Pasos Siguientes Recomendados
+
+### 1. Automatización de Slots
+*   Crear endpoints para que el profesional gestione sus `ResourceTemplate`.
+*   Implementar un Management Command o tarea programada (Celery/Cron) para generar slots automáticamente cada noche.
+
+### 2. Sistema de Notificaciones (Email)
+*   Configurar servicio de email (SMTP, SendGrid, etc.).
+*   Enviar email automático al crear reserva con el link de confirmación (`/confirm/<uuid>/`).
+*   Implementar recordatorios automáticos (24h/48h antes).
+
+### 3. Reserva Pública (Self-Service)
+*   Crear vista pública para que pacientes vean slots disponibles de un profesional.
+*   Permitir que un paciente "solicite" un turno ingresando sus datos básicos.
+
+### 4. Interfaz de Usuario (Frontend)
+*   **Panel del Profesional**: Calendario semanal, gestión de pacientes y bloqueo de fechas.
+*   **Página de Reserva**: Landing para que el paciente elija su horario.
+
+### 5. Refinamientos Técnicos
+*   **CORS**: Configurar `django-cors-headers`.
+*   **Filtros**: Mejorar el endpoint de `/slots/` con rangos de fecha flexibles.

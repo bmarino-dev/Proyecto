@@ -171,3 +171,73 @@ class ReservationDetailSerializer(serializers.ModelSerializer):
         )
         read_only_fields = fields
     
+
+#Reservations Publicas
+
+class ReservationPublicSerializer(serializers.ModelSerializer):
+    slot_id = serializers.UUIDField(write_only=True)
+    first_name = serializers.CharField(write_only=True)
+    last_name = serializers.CharField(write_only=True)
+    email = serializers.EmailField(write_only=True)
+    phone = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    class Meta:
+        model = Reservation
+        fields = ("id", "slot_id", "first_name", "last_name", "email", "phone", "notes", "status", "created_at")
+        read_only_fields = ("id", "status", "created_at")
+
+    def validate(self, data):
+        request = self.context.get("request")
+        business = request.user.business_profile
+
+        #Verificar que el slot exista y pertenezca al profesional
+        try:
+            slot = ResourceSlot.objects.get(
+                id=data["slot_id"],
+                template__business=business
+            )
+        except ResourceSlot.DoesNotExist:
+            raise serializers.ValidationError({"slot_id": "El slot no existe o no te pertenece."})
+
+        if not slot.is_available:
+            raise serializers.ValidationError({"slot_id": "Este slot ya está reservado."})
+        
+        data["slot"] = slot
+        return data
+
+    def create(self, validated_data):
+        slot = validated_data.pop("slot")
+        business = slot.template.business
+
+        #Extraer datos del paciente
+        first_name = validated_data.pop("first_name")
+        last_name = validated_data.pop("last_name")
+        email = validated_data.pop("email")
+        phone = validated_data.pop("phone", None)
+
+        #Crear o encontrar al paciente
+        patient, created = Patient.objects.get_or_create(
+            business=business,
+            email=email,
+            defaults={
+                "first_name": first_name,
+                "last_name": last_name,
+                "phone": phone
+            }
+        )
+
+        if not created:
+            # Actualizamos los datos si el paciente ya existía
+            patient.first_name = first_name
+            patient.last_name = last_name
+            if phone:
+                patient.phone = phone
+            patient.save()
+
+        return Reservation.objects.create(
+            slot=slot,
+            patient=patient,
+            **validated_data
+        )
+
+       
