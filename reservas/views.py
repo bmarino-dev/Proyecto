@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
-from .models import Patient, ResourceSlot, Reservation, BlackOutDates
+from .models import Patient, ResourceSlot, Reservation, BlackOutDates, ResourceTemplate
 from .serializers import (
     SignupSerializer,
     PatientSerializer,
@@ -12,6 +12,8 @@ from .serializers import (
     ReservationCreateSerializer,
     ReservationDetailSerializer,
     BlackOutDateSerializer,
+    ReservationPublicSerializer,
+    ResourceTemplateSerializer,
 )
 
 
@@ -55,20 +57,51 @@ class PatientDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 
-# SLOTS DISPONIBLES
+# TEMPLATES DE DISPONIBILIDAD (REGLAS DE HORARIOS)
 
-class AvailableSlotListView(generics.ListAPIView):
+class ResourceTemplateListCreateView(generics.ListCreateAPIView):
     """
-    GET /slots/?date=2024-06-01   → Slots disponibles del profesional para una fecha
-    GET /slots/                   → Todos los slots futuros disponibles
+    GET  /templates/       → Lista todas las plantillas del profesional
+    POST /templates/       → Crea una nueva plantilla
     """
-    serializer_class = ResourceSlotSerializer
+    serializer_class = ResourceTemplateSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        business = self.request.user.business_profile
+        return ResourceTemplate.objects.filter(business=self.request.user.business_profile)
+
+
+class ResourceTemplateDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET    /templates/:id/  → Detalle
+    PATCH  /templates/:id/  → Actualizar/Desactivar
+    DELETE /templates/:id/  → Borrar plantilla
+    """
+    serializer_class = ResourceTemplateSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ResourceTemplate.objects.filter(business=self.request.user.business_profile)
+
+
+
+class AvailableSlotPublicListView(generics.ListAPIView):
+    """
+    GET /public/slots/?business=<business_id>&date=2026-06-01
+    Lista pública de slots disponibles para un profesional en específico.
+    No requiere autenticación.
+    """
+    serializer_class = ResourceSlotSerializer
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get_queryset(self):
+        business_id = self.request.query_params.get("business_id")
+        if not business_id:
+            return ResourceSlot.objects.none()
+
         qs = ResourceSlot.objects.filter(
-            template__business=business,
+            template__business_id=business_id,
             start_datetime__gte=timezone.now(),
             active=True,
         ).select_related("template", "reservation")
@@ -152,6 +185,12 @@ class ReservationCancelView(APIView):
         reservation.status = "cancelled"
         reservation.save(update_fields=["status"])
         return Response({"detail": "Reserva cancelada correctamente."})
+
+
+class ReservationPublicCreateView(generics.CreateAPIView):
+    serializer_class = ReservationPublicSerializer
+    permission_classes = [AllowAny]
+    authentication_classes = []
 
 
 # CONFIRMACIÓN PÚBLICA POR TOKEN

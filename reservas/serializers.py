@@ -187,20 +187,13 @@ class ReservationPublicSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "status", "created_at")
 
     def validate(self, data):
-        request = self.context.get("request")
-        business = request.user.business_profile
-
-        #Verificar que el slot exista y pertenezca al profesional
         try:
-            slot = ResourceSlot.objects.get(
-                id=data["slot_id"],
-                template__business=business
-            )
+            slot = ResourceSlot.objects.get(id=data["slot_id"])
         except ResourceSlot.DoesNotExist:
-            raise serializers.ValidationError({"slot_id": "El slot no existe o no te pertenece."})
+            raise serializers.ValidationError({"slot_id": "El slot no existe."})
 
         if not slot.is_available:
-            raise serializers.ValidationError({"slot_id": "Este slot ya está reservado."})
+            raise serializers.ValidationError({"slot_id": "Este slot ya está reservado o no está disponible."})
         
         data["slot"] = slot
         return data
@@ -241,3 +234,21 @@ class ReservationPublicSerializer(serializers.ModelSerializer):
         )
 
        
+#Crear Template
+class ResourceTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResourceTemplate
+        fields = ("id", "business", "name", "duration", "start_time", "end_time", "weekday", "start_date", "active")
+        read_only_fields = ("id", "business")
+
+    def validate(self, data):
+        if data.get('end_time') and data.get('start_time') and data['end_time'] < data['start_time']:
+            raise serializers.ValidationError({"end_time": "La hora de fin no puede ser anterior a la de inicio."})
+        return data
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        validated_data['business'] = request.user.business_profile
+        return super().create(validated_data)
+    
+    
