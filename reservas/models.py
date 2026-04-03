@@ -61,7 +61,6 @@ class Business(models.Model):
 
 
 # PACIENTE
-# Contacto registrado por el profesional.
 # No tiene login propio.
 
 

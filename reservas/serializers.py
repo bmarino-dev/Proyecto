@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from .models import Business, Patient, ResourceTemplate, ResourceSlot, Reservation, BlackOutDates
 import re
+from django.core.mail import send_mail
 
 User = get_user_model()
 PHONE_REGEX = re.compile(r'^\+?\d{8,15}$')
@@ -200,38 +201,69 @@ class ReservationPublicSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         slot = validated_data.pop("slot")
-        business = slot.template.business
 
-        #Extraer datos del paciente
-        first_name = validated_data.pop("first_name")
-        last_name = validated_data.pop("last_name")
-        email = validated_data.pop("email")
-        phone = validated_data.pop("phone", None)
+        #utilizamos transaction.atomic para asegurar que la reserva se cree correctamente
+        #y evitar condiciones de carrera
+        with transaction.atomic():
+            locked_slot = ResourceSlot.objects.select_for_update().get(id=slot.id)
 
-        #Crear o encontrar al paciente
-        patient, created = Patient.objects.get_or_create(
-            business=business,
-            email=email,
-            defaults={
-                "first_name": first_name,
-                "last_name": last_name,
-                "phone": phone
-            }
-        )
+            if not locked_slot.is_available:
+                raise serializers.ValidationError({"slot_id" : "¡Este turno acaba de ser reservado por otro cliente!"})
+            
 
-        if not created:
-            # Actualizamos los datos si el paciente ya existía
-            patient.first_name = first_name
-            patient.last_name = last_name
-            if phone:
-                patient.phone = phone
-            patient.save()
 
-        return Reservation.objects.create(
-            slot=slot,
-            patient=patient,
-            **validated_data
-        )
+            business = locked_slot.template.business
+
+            #Extraer datos del paciente
+            first_name = validated_data.pop("first_name")
+            last_name = validated_data.pop("last_name")
+            email = validated_data.pop("email")
+            phone = validated_data.pop("phone", None)
+
+            #Crear o encontrar al paciente
+            patient, created = Patient.objects.get_or_create(
+                business=business,
+                email=email,
+                defaults={
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "phone": phone
+                }
+            )
+
+            if not created:
+                # Actualizamos los datos si el paciente ya existía
+                patient.first_name = first_name
+                patient.last_name = last_name
+                if phone:
+                    patient.phone = phone
+                patient.save()
+            
+            reservation = Reservation.objects.create(slot =slot, patient = patient, **validated_data)
+
+            #Generar URL de confirmación
+            confirm_url = f"http://localhost:8000/confirm/{reservation.confirmation_token}/"
+
+            #Crear mensaje de confirmación
+            mensaje = f"""
+            Hola {patient.first_name},
+            
+            Has solicitado un turno con nuestro equipo.
+            Para confirmar tu cita definitivamente, haz clic en el siguiente enlace:
+            {confirm_url}
+            
+            Si deseas cancelarlo, ingresa aquí: {confirm_url}?cancel=1
+            """
+            #Enviar email de confirmación
+            send_mail(
+                "Confirmar reserva",
+                mensaje,
+                "[EMAIL_ADDRESS]",
+                [email],
+                fail_silently=False,
+            )
+            
+            return reservation
 
        
 #Crear Template
