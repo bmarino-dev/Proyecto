@@ -8,36 +8,34 @@ El proyecto tiene una base sólida y bien estructurada siguiendo las mejores pr�
     *   **Sistema de Agendamiento**: Las plantillas definen el horario semanal y los slots son las instancias reales de reserva.
     *   **Validaciones**: Implementadas validaciones críticas (evitar reservas pasadas, unicidad de pacientes, respeto a fechas bloqueadas).
 
-2.  **Lógica de Negocio**:
-    *   **Generador de Slots**: Función en `utils.py` que genera turnos a futuro evitando días bloqueados.
-    *   **Flujo de Confirmación**: Sistema de confirmación pública mediante Token UUID (paciente confirma/cancela vía email sin login).
-
-3.  **Infraestructura Técnica**:
-    *   Uso de UUIDs para IDs (seguridad y escalabilidad).
-    *   Autenticación mediante JWT (SimpleJWT).
-    *   Tests unitarios básicos para registro y generación de slots.
+2.  **Lógica de Negocio y Endpoints**:
+    *   **Privado**: Autenticación JWT, gestión de pacientes, creación de plantillas de horarios (`ResourceTemplates`) y bloqueo de fechas (`BlackOutDates`).
+    *   **Público (Self-Service)**: Endpoints definidos para consultar slots libres (`/public/slots/`), solicitar reserva (`/public/reservations/`), y confirmar vía token por email.
+    *   **Generador de Slots**: Función de lógica de negocio central creada en `utils.py` que genera turnos a futuro evitando días bloqueados.
 
 ---
 
-## Pasos Siguientes Recomendados
+## Pasos Siguientes hasta el Producto Final
 
-### 1. Automatización de Slots
-*   Crear endpoints para que el profesional gestione sus `ResourceTemplate`.
-*   Implementar un Management Command o tarea programada (Celery/Cron) para generar slots automáticamente cada noche.
+(Completado) ### 1. Testeo y Depuración del Flujo Self-Service (Prioridad Alta)
+*   Ejecutar pruebas End-to-End del ciclo completo de reserva pública.
+*   Simular el flujo completo: Crear la reserva -> Recibir UUID token por email (en backend de consola) -> Usar el endpoint `/confirm/<token>/` -> Verificar el cambio de estado del Slot y de la Reserva en la Base de Datos.
+*   Asegurar que no existan errores de concurrencia (race conditions) ni doble asignación de turnos.
 
-### 2. Sistema de Notificaciones (Email)
-*   Configurar servicio de email (SMTP, SendGrid, etc.).
-*   Enviar email automático al crear reserva con el link de confirmación (`/confirm/<uuid>/`).
-*   Implementar recordatorios automáticos (24h/48h antes).
+### 2. Automatización de Generación de Slots
+*   Crear un Management Command de Django (ej. `python manage.py generate_weekly_slots`).
+*   Implementar la lógica para que este comando llame a la función `utils.py` y genere la agenda de los profesionales de manera desatendida.
+*   A futuro, conectar este comando a una tarea programada regularmente (Cron o Celery Beat).
 
-### 3. Reserva Pública (Self-Service)
-*   Crear vista pública para que pacientes vean slots disponibles de un profesional.
-*   Permitir que un paciente "solicite" un turno ingresando sus datos básicos.
+### 3. Sistema de Notificaciones Reales (Email)
+*   Transicionar del backend de consola (`console.EmailBackend`) a un servidor de correos real (ej. SendGrid o SMTP de Gmail).
+*   Dar formato a los correos electrónicos enviados al paciente (HTML Templates con estilos profesionales) para la confirmación de la reserva.
+*   (Opcional / Deseable) Implementar recordatorios automáticos (24h/48h antes del turno).
 
-### 4. Interfaz de Usuario (Frontend)
-*   **Panel del Profesional**: Calendario semanal, gestión de pacientes y bloqueo de fechas.
-*   **Página de Reserva**: Landing para que el paciente elija su horario.
+### 4. Refinamientos Técnicos y API
+*   **CORS**: Instalar y configurar apropiadamente `django-cors-headers` para permitir que aplicaciones Front-End consuman la API en producción.
+*   **Filtros**: Expandir y mejorar filtros en los endpoints, por ejemplo permitir a los pacientes filtrar slots por rango de fechas (desde-hasta).
 
-### 5. Refinamientos Técnicos
-*   **CORS**: Configurar `django-cors-headers`.
-*   **Filtros**: Mejorar el endpoint de `/slots/` con rangos de fecha flexibles.
+### 5. Interfaz de Usuario (Frontend)
+*   **Panel del Profesional**: Desarrollar la UI (frontend) donde el profesional administre su agenda (calendario visual), perfiles de pacientes, y bloqueos de fechas.
+*   **Página de Reserva Pública**: Crear la "landing" donde el paciente entra utilizando el link del profesional, visualiza el calendario simple y pide el turno.

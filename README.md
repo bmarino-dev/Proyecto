@@ -75,25 +75,28 @@ A continuación la lista principal de los endpoints disponibles. Todos los endpo
 | `POST` | `/auth/login/` | Inicia sesión (devuelve `access` y `refresh` tokens). |
 | `POST` | `/auth/token/refresh/` | Renueva el access token usando el refresh token. |
 
-### Reservas y Slots (Privados)
+### Reservas (Privado)
 | Método | Endpoint | Descripción |
 |---|---|---|
-| `GET` | `/slots/` | Lista todos los slots disponibles futuros del profesional. Admite query `?date=YYYY-MM-DD`. |
-| `GET, POST` | `/reservations/` | Lista o crea las reservas hechas por pacientes a ciertos slots. |
-| `PATCH` | `/reservations/<id>/cancel/` | Cancela una reserva específica identificada por su ID UUID. |
+| `GET, POST` | `/reservations/` | El profesional consulta su agenda o crea reservas manualmente. |
+| `PATCH` | `/reservations/<id>/cancel/` | Cancela una reserva específica desde el panel de control. |
 
-### Confirmación Pública (Públicos)
+### Flujo de Reserva Self-Service (Público)
 | Método | Endpoint | Descripción |
 |---|---|---|
-| `GET` | `/confirm/<token>/` | El paciente confirma el turno sin loguearse. |
-| `GET` | `/confirm/<token>/?cancel=1`| El paciente cancela el turno sin loguearse. |
+| `GET` | `/public/slots/?business_id=...` | El paciente visualiza todos los turnos libres (vidriera). |
+| `POST` | `/public/reservations/` | Un visitante u oyente anónimo asegura un turno. |
+| `GET` | `/confirm/<token>/` | Validación asíncrona por email (Confirma la reserva). |
+| `GET` | `/confirm/<token>/?cancel=1`| Validación asíncrona por email (Cancela la reserva). |
 
 ### Entidades Privadas del Profesional (Requiere Login)
 | Método | Endpoint | Descripción |
 |---|---|---|
 | `GET, POST` | `/patients/` | Lista o crea pacientes asociados al profesional logueado. |
 | `PATCH, DEL`| `/patients/<id>/` | Actualiza o elimina un paciente determinado. |
-| `GET, POST` | `/blackouts/` | Gestión de fechas bloqueadas que restringen la generación de turnos futuros. |
+| `GET, POST` | `/templates/` | Configura los horarios recurrentes de atención semanal. |
+| `PATCH, DEL`| `/templates/<id>/` | Actualiza o pausa horarios recurrentes asignados. |
+| `GET, POST` | `/blackouts/` | Gestión de fechas bloqueadas (vacaciones, ausencias). |
 | `PATCH, DEL`| `/blackouts/<id>/` | Detalle, actualización y borrado de fechas bloqueadas. |
 
 ---
