@@ -23,3 +23,7 @@ media/
 # IDEs
 .vscode/
 .idea/
+
+# Documentos internos de desarrollo
+ESTADO_Y_PROYECTO.txt
+CONTEXTO_ARQUITECTURA.md
