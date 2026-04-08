@@ -1,10 +1,11 @@
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from django.utils import timezone
 from datetime import timedelta, date, time
 from rest_framework.test import APIClient
 from django.urls import reverse
 from .models import User, Business, Patient, ResourceTemplate, ResourceSlot, Reservation
 from .utils import generate_slots_for_template
+import concurrent.futures
 
 class ReservationMVPTests(TestCase):
 
@@ -98,3 +99,59 @@ class ReservationMVPTests(TestCase):
         patients_response = self.client.get(reverse('patient-list'))
         self.assertEqual(patients_response.status_code, 200)
         self.assertEqual(len(patients_response.data['results']), 1) # Debería traer al paciente 'Juan Perez'
+
+class ReservationConcurrencyTests(TransactionTestCase):
+    # Usamos TransactionTestCase para que cada test tenga su propia transacción y no interfiera con otros tests.
+
+    # Indicamos que queremos usar la base de datos por defecto.
+    databases = {'default'}
+
+    def setUp(self):
+        self.client = APIClient()
+
+        self.user = User.objects.create_user(username = "dr_flash", email = "f@f.com", password = "123")
+        self.business = Business.objects.create(user = self.user, phone = "1234567890", specialty = "psychology")
+
+        #Creamos una sola plantilla
+        self.template = ResourceTemplate.objects.create(
+            business = self.business,
+            name = "Plantilla de prueba",
+            weekday = 1,
+            start_time = time(8,0),
+            end_time = time(9,0),
+            duration = timedelta(hours=1)
+        )
+
+        #Generamos un unico slot para mañana
+        self.slot = ResourceSlot.objects.create(template=self.template, date=timezone.localdate() + timedelta(days = 1), start_datetime = timezone.now() + timedelta(days = 1))
+
+    def test_evitar_doble_reserva_concurrente(self):
+        from django.urls import reverse
+        url = reverse('public-reservation-create')
+            
+        def paciente_agresivo(numero_clon):
+            cliente_falso = APIClient() 
+            res = cliente_falso.post(url, {
+                "slot_id": str(self.slot.id),
+                "first_name": "Clon",
+                "last_name": str(numero_clon),
+                "email": f"clon{numero_clon}@test.com",
+                "phone": "1234567890",
+            })
+            return res.status_code
+
+        # --- DISPARO SECUENCIAL (Para no quebrar la memoria RAM de SQLite) ---
+        resultados_http = []
+        for i in range(5):
+            resultados_http.append(paciente_agresivo(i))
+            
+        print("\nResultados de los 5 disparos secuenciales rápidos:", resultados_http)
+            
+        # 1. El primer clon tuvo que triunfar (201)
+        self.assertEqual(resultados_http.count(201), 1)
+            
+        # 2. Los otros 4 rebotaron porque el turno ya no estaba disponible (400 Bad Request)
+        self.assertEqual(resultados_http.count(400), 4)
+            
+        # 3. Comprobación final estricta: Solo hay 1 reserva en la clínica
+        self.assertEqual(Reservation.objects.count(), 1)
