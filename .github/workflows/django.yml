@@ -1,0 +1,33 @@
+name: Django CI (Pruebas Automáticas)
+
+# Cuándo debe despertar el Robot
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# Las instrucciones de lo que debe hacer
+jobs:
+  testeo-vigilante:
+
+    # En qué sistema operativo queremos que corra en la nube
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 1. Descargar el código de este repositorio
+      uses: actions/checkout@v4
+
+    - name: 2. Instalar una computadora con Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: 3. Instalar nuestras librerías (Django, DRF, etc)
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: 4. Correr la batería de Tests Unitarios
+      run: |
+        python manage.py test
