@@ -62,6 +62,29 @@ Este backend provee un flujo completo que incluye generación automática de slo
    ```
    *La API estará disponible en `http://127.0.0.1:8000`.*
 
+6. **(Opcional) Ejecutar la Batería de Tests Automatizados**
+   Para verificar la seguridad del sistema frente a Condiciones de Carrera y doble asignación de reservas:
+   ```bash
+   python manage.py test
+   ```
+
+---
+
+## 🐳 Despliegue con Docker (Infraestructura como Código)
+
+Este proyecto está 100% "Dockerizado" para evitar problemas de compatibilidad y dependencias ("It works on my machine"). 
+Si tienes **Docker Desktop** instalado, puedes levantar toda la infraestructura sin crear entornos virtuales locales:
+
+1. Levantar el proyecto completo:
+   ```bash
+   docker-compose up --build
+   ```
+2. La API estará mapeada automáticamente en `http://localhost:8000/`.
+3. Para apagar y limpiar los contenedores:
+   ```bash
+   docker-compose down
+   ```
+
 ---
 
 ## 🔗 Endpoints de la API
