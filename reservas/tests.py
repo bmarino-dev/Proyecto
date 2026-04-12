@@ -7,6 +7,7 @@ from .models import User, Business, Patient, ResourceTemplate, ResourceSlot, Res
 from .utils import generate_slots_for_template
 import concurrent.futures
 
+
 class ReservationMVPTests(TestCase):
 
     def setUp(self):
@@ -32,6 +33,21 @@ class ReservationMVPTests(TestCase):
             last_name="Perez",
             email="juan@test.com",
             phone="0987654321"
+        )
+
+        self.template = ResourceTemplate.objects.create(
+            business=self.business,
+            name="Plantilla de prueba",
+            weekday=1,
+            start_time=time(8,0),
+            end_time=time(9,0),
+            duration=timedelta(hours=1)
+        )
+        #crear slot para ayer
+        self.slot = ResourceSlot.objects.create(
+            template=self.template,
+            date=timezone.localdate() - timedelta(days=1),
+            start_datetime=timezone.now() - timedelta(days=1),
         )
 
     def test_signup_creates_business(self):
@@ -100,6 +116,22 @@ class ReservationMVPTests(TestCase):
         self.assertEqual(patients_response.status_code, 200)
         self.assertEqual(len(patients_response.data['results']), 1) # Debería traer al paciente 'Juan Perez'
 
+    def test_reservar_turno_del_pasado(self):
+
+        url = reverse('public-reservation-create')
+        response = self.client.post(url, {
+            "slot_id": str(self.slot.id),
+            "first_name": "Juan",
+            "last_name": "Perez",
+            "email": "juan@test.com",
+            "phone": "1234567890",
+        })
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("slot_id", response.data)
+
+        
+        
 class ReservationConcurrencyTests(TransactionTestCase):
     # Usamos TransactionTestCase para que cada test tenga su propia transacción y no interfiera con otros tests.
 

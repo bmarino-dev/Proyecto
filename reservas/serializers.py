@@ -196,6 +196,8 @@ class ReservationPublicSerializer(serializers.ModelSerializer):
         if not slot.is_available:
             raise serializers.ValidationError({"slot_id": "Este slot ya está reservado o no está disponible."})
         
+        if slot.start_datetime < timezone.now():
+            raise serializers.ValidationError({"slot_id": "No se puede reservar un slot en el pasado."})
         data["slot"] = slot
         return data
 
