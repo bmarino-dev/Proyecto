@@ -13,6 +13,8 @@ Este backend provee un flujo completo que incluye generación automática de slo
 * **Días Libres/Feriados (BlackOutDates)**: El sistema no genera turnos sobre fechas marcadas como bloqueadas por el profesional.
 * **Paginación Inteligente**: Listados paginados integrados para garantizar el rendimiento escalable de la base de datos y facilitar la integración con el Front-End.
 * **Aislamiento por Perfiles**: Cada profesional (Business) solo tiene acceso a sus propios pacientes y reservas.
+* **Integración Continua (CI/CD)**: Batería de tests automatizada ejecutada en entornos limpios por medio de GitHub Actions en cada push.
+* **Documentación Automática OpenAPI (Swagger)**: Esquema autogenerado al vuelo con interfaz gráfica para consultar y probar todos los endpoints sin necesidad de software de terceros.
 
 ---
 
@@ -89,7 +91,13 @@ Si tienes **Docker Desktop** instalado, puedes levantar toda la infraestructura 
 
 ## 🔗 Endpoints de la API
 
-A continuación la lista principal de los endpoints disponibles. Todos los endpoints (excepto Auth y Confirmación Pública) requieren enviar un header HTTP: `Authorization: Bearer <tu_access_token>`.
+A continuación la lista principal de los endpoints disponibles. El esquema completo y visual puede consultarse desde el **Panel de Swagger UI**.
+
+### Documentación Visual e Interactiva (Swagger/OpenAPI)
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `GET` | `/api/docs/` | **Panel Web Interactivo de Swagger UI**. Permite leer parámetros y mandar ejecuciones reales. |
+| `GET` | `/api/schema/` | Esquema nativo de OpenAPI en formato `YAML`/`JSON`. |
 
 ### Autenticación (Públicos)
 | Método | Endpoint | Descripción |

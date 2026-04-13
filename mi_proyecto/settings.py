@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django_filters',
     'rest_framework',
     'rest_framework_simplejwt',
+    'drf_spectacular',
 ]
 
 REST_FRAMEWORK = {
@@ -53,6 +54,16 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    # Le decimos a Django que use drf_spectacular para leer el código y armar el "menú"
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# Títulos y configuraciones estéticas de tu panel visual
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API de Reservas Clínicas',
+    'DESCRIPTION': 'Un sistema profesional de agendamiento con confirmación Zero-Trust.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 AUTH_USER_MODEL = 'reservas.User'
