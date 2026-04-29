@@ -6,6 +6,7 @@ from .models import Business, Patient, ResourceTemplate, ResourceSlot, Reservati
 import re
 from django.core.mail import send_mail
 
+
 User = get_user_model()
 PHONE_REGEX = re.compile(r'^\+?\d{8,15}$')
 
@@ -59,6 +60,21 @@ class BusinessPublicSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class BusinessDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Business
+        fields = ("id", "full_name", "specialty", "phone")
+        read_only_fields = ("id", "full_name")
+
+
+class BusinessPasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    uid = serializers.CharField(required=True)
+    token = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, write_only=True)
 
 
 # ==========================================
@@ -123,17 +139,6 @@ class BlackOutDateSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         validated_data['business'] = request.user.business_profile
         return super().create(validated_data)
-
-class BusinessDetailSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Business
-        fields = ("id", "full_name", "specialty", "phone")
-        read_only_fields = ("id", "full_name")
-
-class BusinessPasswordResetSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Business
-        fields = ("email")
 
 
 

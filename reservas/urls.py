@@ -7,6 +7,16 @@ urlpatterns = [
     # ==========================================
     path("auth/signup/", views.SignupCreateView.as_view(), name="signup"),
 
+    # BusinessDetail
+    path("business/me/", views.BusinessDetailView.as_view(), name="business-detail"),
+
+    # Perfil público del Profesional
+    path("public/business/<uuid:pk>/", views.BusinessPublicRetrieveView.as_view(), name="public-business-detail"),
+
+    # Password Reset
+    path("auth/password-reset/", views.BusinessPasswordResetView.as_view(), name="password-reset"),
+    path("auth/password-reset-confirm/", views.PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
+
     # ==========================================
     # 2. B2B PRIVATE API (Requieren JWT)
     # ==========================================
@@ -26,15 +36,13 @@ urlpatterns = [
     path("reservations/", views.ReservationListCreateView.as_view(), name="reservation-list"),
     path("reservations/<uuid:pk>/cancel/", views.ReservationCancelView.as_view(), name="reservation-cancel"),
 
-    # BusinessDetail
-    path("business/me/", views.BusinessDetailView.as_view(), name="business-detail"),
+    
     
     
     # ==========================================
     # 3. B2C PUBLIC API (No requieren Auth)
     # ==========================================
-    # Perfil público del Profesional
-    path("public/business/<uuid:pk>/", views.BusinessPublicRetrieveView.as_view(), name="public-business-detail"),
+    
     
     # Slots disponibles
     path("public/slots/", views.AvailableSlotPublicListView.as_view(), name="public-slot-list"),

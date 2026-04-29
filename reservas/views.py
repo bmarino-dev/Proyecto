@@ -15,8 +15,18 @@ from .serializers import (
     ReservationCreateSerializer,
     ReservationDetailSerializer,
     ReservationPublicSerializer,
-    BusinessDetailSerializer
+    BusinessDetailSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetSerializer
 )
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.core.mail import send_mail
+from django.contrib.auth import get_user_model
+from django.utils.http import urlsafe_base64_decode
+
+User = get_user_model()
 
 
 # ==========================================
@@ -31,6 +41,91 @@ class SignupCreateView(generics.CreateAPIView):
     serializer_class = SignupSerializer
     permission_classes = [AllowAny]
     authentication_classes = []
+
+class BusinessPublicRetrieveView(generics.RetrieveAPIView):
+    """
+    GET /public/business/:id/
+    Perfil público del profesional.
+    """
+    serializer_class = BusinessPublicSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return Business.objects.filter(user__is_active=True)
+
+class BusinessDetailView(generics.RetrieveUpdateAPIView):
+    serializer_class = BusinessDetailSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return get_object_or_404(Business, id=self.request.user.business_profile.id)
+
+class BusinessPasswordResetView(generics.GenericAPIView):
+    serializer_class = BusinessPasswordResetSerializer
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+
+        #buscamos el usuario y mandamos el mail
+        try:
+            user = User.objects.get(email=email)
+            
+            #transformamos el id en string seguro para url
+            uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+
+            #creamos el token para enviarlo al mail y asegurarnos que lo abre el dueño del mail
+            token = default_token_generator.make_token(user)
+
+            reset_url = f"http://localhost:3000/reset-password/{uidb64}/{token}/"
+            
+            mensaje = f"""
+            Hola {user.first_name},
+            Has solicitado restablecer tu contraseña.
+            Haz clic en el siguiente enlace para crear una nueva:
+            {reset_url}
+            """
+            
+            send_mail(
+                "Restablecer contraseña",
+                mensaje,
+                "soporte@miapp.com",
+                [email],
+                fail_silently=False,
+            )
+            
+        except User.DoesNotExist:
+            pass
+
+        #en cualquier caso devolvemos success para no dar pistas
+        return Response({"detail": "Si el usuario existe, se le envio un mail con las instrucciones para restablecer la contraseña"})
+
+class PasswordResetConfirmView(generics.GenericAPIView):
+    serializer_class = PasswordResetConfirmSerializer
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+            uid = serializer.validated_data['uid']
+            token = serializer.validated_data['token']
+            new_password = serializer.validated_data['new_password']
+            uid = urlsafe_base64_decode(uid).decode()
+            
+            user = User.objects.get(pk=uid)
+            if not default_token_generator.check_token(user, token):
+                return Response({"detail": "Token inválido o expirado."},
+            status=400)
+            user.set_password(new_password)
+            user.save()
+            return Response({"detail": "Contraseña restablecida correctamente."})
+        except User.DoesNotExist:
+            return Response({"detail": "Usuario no encontrado."}, status=400)
 
 
 # ==========================================
@@ -154,28 +249,7 @@ class ReservationCancelView(APIView):
         reservation.save(update_fields=["status"])
         return Response({"detail": "Reserva cancelada correctamente."})
 
-class BusinessDetailView(generics.RetrieveUpdateAPIView):
-    serializer_class = BusinessDetailSerializer
-    permission_classes = [IsAuthenticated]
 
-    def get_object(self):
-        return get_object_or_404(Business, id=self.request.user.business_profile.id)
-
-class BusinessPasswordResetView(generics.GenericAPIView):
-    serializer_class = BusinessPasswordResetSerializer
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        email = serializer.validated_data["email"]
-
-        #buscamos el usuario y mandamos el mail
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            return Response({"detail": "Si el usuario existe, se le envio un mail con las instrucciones para restablecer la contraseña"})
-        
         
         
 
@@ -184,17 +258,6 @@ class BusinessPasswordResetView(generics.GenericAPIView):
 # ==========================================
 # 3. B2C PUBLIC API (Pacientes / Público)
 # ==========================================
-
-class BusinessPublicRetrieveView(generics.RetrieveAPIView):
-    """
-    GET /public/business/:id/
-    Perfil público del profesional.
-    """
-    serializer_class = BusinessPublicSerializer
-    permission_classes = [AllowAny]
-
-    def get_queryset(self):
-        return Business.objects.filter(user__is_active=True)
 
 
 class AvailableSlotPublicListView(generics.ListAPIView):
