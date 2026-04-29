@@ -10,7 +10,9 @@ User = get_user_model()
 PHONE_REGEX = re.compile(r'^\+?\d{8,15}$')
 
 
-# AUTH
+# ==========================================
+# 1. AUTHENTICATION & PROFILES
+# ==========================================
 
 class SignupSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(write_only=True, required=True)
@@ -50,8 +52,18 @@ class SignupSerializer(serializers.ModelSerializer):
         return user
 
 
+class BusinessPublicSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Business
+        fields = ("id", "full_name", "specialty", "phone")
+        read_only_fields = fields
 
-# PACIENTES
+
+
+
+# ==========================================
+# 2. CORE ENTITIES (B2B)
+# ==========================================
 
 class PatientSerializer(serializers.ModelSerializer):
     class Meta:
@@ -80,18 +92,22 @@ class PatientSerializer(serializers.ModelSerializer):
         return Patient.objects.create(business=business, **validated_data)
 
 
-# SLOTS
-
-class ResourceSlotSerializer(serializers.ModelSerializer):
-    is_available = serializers.BooleanField(read_only=True)
-
+class ResourceTemplateSerializer(serializers.ModelSerializer):
     class Meta:
-        model = ResourceSlot
-        fields = ("id", "date", "start_datetime", "end_datetime", "is_available")
-        read_only_fields = fields
+        model = ResourceTemplate
+        fields = ("id", "business", "name", "duration", "start_time", "end_time", "weekday", "start_date", "active")
+        read_only_fields = ("id", "business")
 
+    def validate(self, data):
+        if data.get('end_time') and data.get('start_time') and data['end_time'] < data['start_time']:
+            raise serializers.ValidationError({"end_time": "La hora de fin no puede ser anterior a la de inicio."})
+        return data
 
-# BLACKOUT DATES
+    def create(self, validated_data):
+        request = self.context.get("request")
+        validated_data['business'] = request.user.business_profile
+        return super().create(validated_data)
+
 
 class BlackOutDateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -108,8 +124,31 @@ class BlackOutDateSerializer(serializers.ModelSerializer):
         validated_data['business'] = request.user.business_profile
         return super().create(validated_data)
 
+class BusinessDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Business
+        fields = ("id", "full_name", "specialty", "phone")
+        read_only_fields = ("id", "full_name")
 
-# RESERVAS
+class BusinessPasswordResetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Business
+        fields = ("email")
+
+
+
+# ==========================================
+# 3. SLOTS & RESERVATIONS
+# ==========================================
+
+class ResourceSlotSerializer(serializers.ModelSerializer):
+    is_available = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = ResourceSlot
+        fields = ("id", "date", "start_datetime", "end_datetime", "is_available")
+        read_only_fields = fields
+
 
 class ReservationCreateSerializer(serializers.ModelSerializer):
     """
@@ -171,9 +210,7 @@ class ReservationDetailSerializer(serializers.ModelSerializer):
             "last_reminder_sent_at", "notes", "created_at"
         )
         read_only_fields = fields
-    
 
-#Reservations Publicas
 
 class ReservationPublicSerializer(serializers.ModelSerializer):
     slot_id = serializers.UUIDField(write_only=True)
@@ -212,7 +249,6 @@ class ReservationPublicSerializer(serializers.ModelSerializer):
             if not locked_slot.is_available:
                 raise serializers.ValidationError({"slot_id" : "¡Este turno acaba de ser reservado por otro cliente!"})
             
-
 
             business = locked_slot.template.business
 
@@ -266,23 +302,3 @@ class ReservationPublicSerializer(serializers.ModelSerializer):
             )
             
             return reservation
-
-       
-#Crear Template
-class ResourceTemplateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ResourceTemplate
-        fields = ("id", "business", "name", "duration", "start_time", "end_time", "weekday", "start_date", "active")
-        read_only_fields = ("id", "business")
-
-    def validate(self, data):
-        if data.get('end_time') and data.get('start_time') and data['end_time'] < data['start_time']:
-            raise serializers.ValidationError({"end_time": "La hora de fin no puede ser anterior a la de inicio."})
-        return data
-
-    def create(self, validated_data):
-        request = self.context.get("request")
-        validated_data['business'] = request.user.business_profile
-        return super().create(validated_data)
-    
-    
