@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.db import transaction
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from .models import Business, Patient, ResourceTemplate, ResourceSlot, Reservation, BlackOutDates
+from .models import Business, Patient, ResourceTemplate, ResourceSlot, Reservation, BlackOutDates, WaitlistEntry
 import re
 from django.core.mail import send_mail
 
@@ -211,13 +211,14 @@ class ReservationDetailSerializer(serializers.ModelSerializer):
         model = Reservation
         fields = (
             "id", "slot", "patient", "status",
-            "confirmed_at", "reminder_count",
-            "last_reminder_sent_at", "notes", "created_at"
+            "reminder_count", "last_reminder_sent_at", 
+            "notes", "created_at"
         )
         read_only_fields = fields
 
 
-class ReservationPublicSerializer(serializers.ModelSerializer):
+class ReservationPublicSerializer(serializers.ModelSerializer):  
+
     slot_id = serializers.UUIDField(write_only=True)
     first_name = serializers.CharField(write_only=True)
     last_name = serializers.CharField(write_only=True)
@@ -282,7 +283,7 @@ class ReservationPublicSerializer(serializers.ModelSerializer):
                     patient.phone = phone
                 patient.save()
             
-            reservation = Reservation.objects.create(slot =slot, patient = patient, **validated_data)
+            reservation = Reservation.objects.create(slot=slot, patient=patient, status="confirmed", **validated_data)
 
             #Generar URL de confirmación
             confirm_url = f"http://localhost:8000/confirm/{reservation.confirmation_token}/"
@@ -291,11 +292,8 @@ class ReservationPublicSerializer(serializers.ModelSerializer):
             mensaje = f"""
             Hola {patient.first_name},
             
-            Has solicitado un turno con nuestro equipo.
-            Para confirmar tu cita definitivamente, haz clic en el siguiente enlace:
-            {confirm_url}
-            
-            Si deseas cancelarlo, ingresa aquí: {confirm_url}?cancel=1
+            ¡Tu turno ha sido confirmado con éxito! Si por alguna razón no puedes asistir, por favor cancela tu turno haciendo clic en este único enlace:
+            {confirm_url}?cancel=1
             """
             #Enviar email de confirmación
             send_mail(
@@ -307,3 +305,9 @@ class ReservationPublicSerializer(serializers.ModelSerializer):
             )
             
             return reservation
+
+class WaitlistCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WaitlistEntry
+        fields = ("id", "first_name", "last_name", "email", "phone")
+        read_only_fields = ("id",)

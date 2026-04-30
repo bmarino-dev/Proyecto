@@ -206,10 +206,9 @@ class ResourceSlot(models.Model):
         # El slot está disponible si está activo y no tiene reserva o la reserva fue cancelada
         if not self.active:
             return False
-        try:
-            return self.reservation.status == "cancelled"
-        except Reservation.DoesNotExist:
-            return True
+        
+        return not self.reservation.filter(status="confirmed").exists() 
+            
 
 
 # RESERVA
@@ -218,13 +217,12 @@ class ResourceSlot(models.Model):
 
 class Reservation(models.Model):
     STATUS_CHOICES = (
-        ("pending", "Pendiente"),
         ("confirmed", "Confirmado"),
         ("cancelled", "Cancelado"),
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    slot = models.OneToOneField(
+    slot = models.ForeignKey(
         ResourceSlot,
         on_delete=models.CASCADE,
         related_name="reservation"
@@ -234,7 +232,7 @@ class Reservation(models.Model):
         on_delete=models.CASCADE,
         related_name="reservations"
     )
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="confirmed")
 
     # Token único que va en el link del email del paciente
     # El paciente confirma o cancela sin necesidad de login
@@ -243,9 +241,6 @@ class Reservation(models.Model):
         unique=True,
         editable=False
     )
-
-    # Se llena cuando el paciente hace clic en confirmar
-    confirmed_at = models.DateTimeField(null=True, blank=True)
 
     # Cuántos recordatorios se mandaron (máximo 2: 48hs y 24hs antes)
     reminder_count = models.PositiveSmallIntegerField(default=0)
@@ -275,3 +270,29 @@ class Reservation(models.Model):
                 Patient.objects.filter(pk=self.patient_id).update(
                     last_visit=self.slot.date
                 )
+
+
+#Lista de espera
+class WaitlistEntry(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name= "waitlist_entry")
+    first_name = models.CharField(max_length=150)
+    last_name = models.CharField(max_length=150)
+    email = models.EmailField()
+    phone = models.CharField(
+        max_length=20,
+        blank=True,
+        validators=[RegexValidator(r'^\+?\d{8,15}$', message="Número de teléfono inválido")]
+    )
+
+    STATUS_WAITLIST_CHOICES = (
+        ("waiting", "esperando"),
+        ("offered", "ofrecido"),
+        ("booked", "agendado"),
+        ("expired", "expirado")
+    )
+
+    status = models.CharField(max_length=50, choices=STATUS_WAITLIST_CHOICES, default="waiting")
+    offered_slot = models.ForeignKey(ResourceSlot, null=True, blank=True, on_delete=models.SET_NULL)
+    offer_expires_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, editable=False)

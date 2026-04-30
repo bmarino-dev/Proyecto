@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
-from .models import Patient, ResourceSlot, Reservation, BlackOutDates, ResourceTemplate, Business
+from .models import Patient, ResourceSlot, Reservation, BlackOutDates, ResourceTemplate, Business, WaitlistEntry
 from .serializers import (
     SignupSerializer,
     BusinessPublicSerializer,
@@ -17,7 +17,8 @@ from .serializers import (
     ReservationPublicSerializer,
     BusinessDetailSerializer,
     PasswordResetConfirmSerializer,
-    BusinessPasswordResetSerializer
+    BusinessPasswordResetSerializer,
+    WaitlistCreateSerializer
 )
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode
@@ -25,6 +26,7 @@ from django.utils.encoding import force_bytes
 from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
 from django.utils.http import urlsafe_base64_decode
+from datetime import timedelta
 
 User = get_user_model()
 
@@ -247,6 +249,36 @@ class ReservationCancelView(APIView):
 
         reservation.status = "cancelled"
         reservation.save(update_fields=["status"])
+
+        slot_liberado = reservation.slot
+        primer_esperando = WaitlistEntry.objects.filter(
+                business=slot_liberado.template.business, 
+                status = "waiting"
+            ).order_by("created_at").first()
+
+            
+        if primer_esperando:
+            #hacemos oferta temporal
+            primer_esperando.offered_slot = slot_liberado
+            primer_esperando.offer_expires_at = timezone.now() + timedelta(hours=2)
+            primer_esperando.status = "offered"
+            primer_esperando.save()
+
+            #le mandamos el mail
+            link_oferta = f"http://localhost:3000/waitlist/claim/{primer_esperando.id}/"
+            mensaje_espera = f"""
+                Hola {primer_esperando.first_name},
+                ¡Se ha liberado un turno para ti!
+                Fecha: {slot_liberado.start_datetime.strftime('%d/%m/%Y %H:%M')}
+                Tienes 2 horas para reclamarlo haciendo clic aquí: {link_oferta}
+                """
+            send_mail(
+                    "¡Turno Disponible! Lista de Espera",
+                    mensaje_espera,
+                    "soporte@miapp.com",
+                    [primer_esperando.email],
+                    fail_silently=False,
+                    )
         return Response({"detail": "Reserva cancelada correctamente."})
 
 
@@ -298,7 +330,6 @@ class ReservationPublicCreateView(generics.CreateAPIView):
 
 class ReservationConfirmView(APIView):
     """
-    GET /confirm/:token/          → Confirma el turno
     GET /confirm/:token/?cancel=1 → Cancela el turno
     """
     permission_classes = [AllowAny]
@@ -315,7 +346,7 @@ class ReservationConfirmView(APIView):
 
         if reservation.slot.start_datetime < timezone.now():
             return Response(
-                {"detail": "Este turno ya pasó."},
+                {"detail": "Este turno ya caducó."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -324,9 +355,49 @@ class ReservationConfirmView(APIView):
         if cancel:
             reservation.status = "cancelled"
             reservation.save(update_fields=["status"])
-            return Response({"detail": "Turno cancelado. Esperamos verte pronto."})
 
-        reservation.status = "confirmed"
-        reservation.confirmed_at = timezone.now()
-        reservation.save(update_fields=["status", "confirmed_at"])
-        return Response({"detail": "Turno confirmado. ¡Nos vemos!"})
+            slot_liberado = reservation.slot
+            primer_esperando = WaitlistEntry.objects.filter(
+                business=slot_liberado.template.business, 
+                status = "waiting"
+            ).order_by("created_at").first()
+
+            
+            if primer_esperando:
+                #hacemos oferta temporal
+                primer_esperando.offered_slot = slot_liberado
+                primer_esperando.offer_expires_at = timezone.now() + timedelta(hours=2)
+                primer_esperando.status = "offered"
+                primer_esperando.save()
+
+                #le mandamos el mail
+                link_oferta = f"http://localhost:3000/waitlist/claim/{primer_esperando.id}/"
+                mensaje_espera = f"""
+                    Hola {primer_esperando.first_name},
+                    ¡Se ha liberado un turno para ti!
+                    Fecha: {slot_liberado.start_datetime.strftime('%d/%m/%Y %H:%M')}
+                    Tienes 2 horas para reclamarlo haciendo clic aquí: {link_oferta}
+                    """
+                send_mail(
+                        "¡Turno Disponible! Lista de Espera",
+                        mensaje_espera,
+                        "soporte@miapp.com",
+                        [primer_esperando.email],
+                        fail_silently=False,
+                    )
+                
+            return Response({"detail": "Turno cancelado exitosamente. Gracias por avisar."})
+
+
+        return Response({"detail": "Tu turno ya se encuentra confirmado. Si deseas cancelar, utiliza el enlace de cancelación de tu correo."})
+
+class WaitlistCreateView(generics.CreateAPIView):
+    serializer_class = WaitlistCreateSerializer
+    permission_classes = [AllowAny]
+
+    def perform_create(self, serializer):
+        business_id = self.kwargs.get("business_id")
+        business = get_object_or_404(Business, id=business_id)
+
+        serializer.save(business=business)
+

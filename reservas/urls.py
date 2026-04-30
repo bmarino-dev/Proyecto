@@ -52,4 +52,7 @@ urlpatterns = [
 
     # Confirmación/Cancelación pública por email token
     path("confirm/<uuid:token>/", views.ReservationConfirmView.as_view(), name="reservation-confirm"),
+
+    #Lista de espera
+    path("public/business/<uuid:business_id>/waitlist/",views.WaitlistCreateView.as_view(), name="public-waitlist-create")
 ]
