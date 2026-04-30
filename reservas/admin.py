@@ -87,7 +87,21 @@ class ResourceSlotAdmin(admin.ModelAdmin):
 
 @admin.register(Reservation)
 class ReservationAdmin(admin.ModelAdmin):
-    list_display = ["patient", "slot", "status", "confirmed_at", "reminder_count", "created_at"]
+    list_display = ["patient", "slot", "status", "reminder_count", "created_at"]
     list_filter = ["status", "slot__template__business"]
     search_fields = ["patient__first_name", "patient__last_name", "patient__email"]
-    readonly_fields = ["confirmation_token", "confirmed_at", "reminder_count", "last_reminder_sent_at"]
+    readonly_fields = ["confirmation_token", "reminder_count", "last_reminder_sent_at"]
+
+
+# ─────────────────────────────────────────
+# LISTA DE ESPERA
+# ─────────────────────────────────────────
+
+from .models import WaitlistEntry
+
+@admin.register(WaitlistEntry)
+class WaitlistEntryAdmin(admin.ModelAdmin):
+    list_display = ["first_name", "last_name", "email", "business", "status", "created_at"]
+    list_filter = ["status", "business"]
+    search_fields = ["first_name", "last_name", "email"]
+    readonly_fields = ["offered_slot", "offer_expires_at"]

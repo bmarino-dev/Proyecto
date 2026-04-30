@@ -203,11 +203,21 @@ class ResourceSlot(models.Model):
 
     @property
     def is_available(self):
-        # El slot está disponible si está activo y no tiene reserva o la reserva fue cancelada
         if not self.active:
             return False
         
-        return not self.reservation.filter(status="confirmed").exists() 
+        # 1. ¿Hay reserva confirmada?
+        for res in self.reservation.all():
+            if res.status == "confirmed":
+                return False
+                
+        # 2. ¿Hay alguien de la lista de espera con una oferta activa?
+        now = timezone.now()
+        for wl in self.waitlistentry_set.all():
+            if wl.status == "offered" and wl.offer_expires_at and wl.offer_expires_at > now:
+                return False
+                
+        return True
             
 
 
@@ -272,7 +282,7 @@ class Reservation(models.Model):
                 )
 
 
-#Lista de espera
+#Usuario en de espera
 class WaitlistEntry(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name= "waitlist_entry")

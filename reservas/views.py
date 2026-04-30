@@ -311,7 +311,7 @@ class AvailableSlotPublicListView(generics.ListAPIView):
             template__business_id=business_id,
             start_datetime__gte=timezone.now(),
             active=True,
-        ).select_related("template", "reservation")
+        ).select_related("template").prefetch_related("reservation", "waitlistentry_set")
 
         date = self.request.query_params.get("date")
         if date:

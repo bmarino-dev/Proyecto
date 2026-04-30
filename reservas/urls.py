@@ -54,5 +54,9 @@ urlpatterns = [
     path("confirm/<uuid:token>/", views.ReservationConfirmView.as_view(), name="reservation-confirm"),
 
     #Lista de espera
-    path("public/business/<uuid:business_id>/waitlist/",views.WaitlistCreateView.as_view(), name="public-waitlist-create")
+    path("public/business/<uuid:business_id>/waitlist/",views.WaitlistCreateView.as_view(), name="public-waitlist-create"),
+
+    path("public/waitlist/<uuid:waitlist_id>/claim/", views.WaitlistClaimView.as_view(), name="public-waitlist-claim"),
+
+
 ]
