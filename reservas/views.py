@@ -401,3 +401,32 @@ class WaitlistCreateView(generics.CreateAPIView):
 
         serializer.save(business=business)
 
+class WaitlistClaimView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    
+    def post(self, request, waitlist_id):
+        
+        cliente_lista = get_object_or_404(WaitlistEntry, id=waitlist_id)
+        #si no fue ofertado, error
+        if cliente_lista.status != "offered" or not cliente_lista.offered_slot:
+            return Response({"detail": "No tienes una oferta de turno activa"}, status=status.HTTP_400_BAD_REQUEST)
+        #si ya expiró
+        if timezone.now() > cliente_lista.offer_expires_at:
+            cliente_lista.status = "expired"
+            cliente_lista.save()
+            return Response({"detail": "El tiempo de confirmación expiró"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        #si pasa los filtros, geteamos o creamos al paciente y lo agendamos
+        nuevo_paciente, created = Patient.objects.get_or_create(email=cliente_lista.email, business=cliente_lista.business, defaults={
+        'first_name': cliente_lista.first_name,
+        'last_name': cliente_lista.last_name,
+        'phone': cliente_lista.phone
+        })
+        #creamos la reserva
+        Reservation.objects.create(slot=cliente_lista.offered_slot,patient=nuevo_paciente, status="confirmed")
+
+        cliente_lista.status = "booked"
+        cliente_lista.save()
+
+        return Response({"detail": "Reserva agendada exitosamente!"})
