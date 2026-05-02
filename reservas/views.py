@@ -27,6 +27,8 @@ from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
 from django.utils.http import urlsafe_base64_decode
 from datetime import timedelta
+from django.db import transaction
+from .utils import offer_slot_to_waitlist
 
 User = get_user_model()
 
@@ -250,35 +252,9 @@ class ReservationCancelView(APIView):
         reservation.status = "cancelled"
         reservation.save(update_fields=["status"])
 
-        slot_liberado = reservation.slot
-        primer_esperando = WaitlistEntry.objects.filter(
-                business=slot_liberado.template.business, 
-                status = "waiting"
-            ).order_by("created_at").first()
+        #buscamos el paciente mas antiguo en la waitlist y le ofrecemos slot
+        offer_slot_to_waitlist(reservation.slot)
 
-            
-        if primer_esperando:
-            #hacemos oferta temporal
-            primer_esperando.offered_slot = slot_liberado
-            primer_esperando.offer_expires_at = timezone.now() + timedelta(hours=2)
-            primer_esperando.status = "offered"
-            primer_esperando.save()
-
-            #le mandamos el mail
-            link_oferta = f"http://localhost:3000/waitlist/claim/{primer_esperando.id}/"
-            mensaje_espera = f"""
-                Hola {primer_esperando.first_name},
-                ¡Se ha liberado un turno para ti!
-                Fecha: {slot_liberado.start_datetime.strftime('%d/%m/%Y %H:%M')}
-                Tienes 2 horas para reclamarlo haciendo clic aquí: {link_oferta}
-                """
-            send_mail(
-                    "¡Turno Disponible! Lista de Espera",
-                    mensaje_espera,
-                    "soporte@miapp.com",
-                    [primer_esperando.email],
-                    fail_silently=False,
-                    )
         return Response({"detail": "Reserva cancelada correctamente."})
 
 
@@ -356,35 +332,8 @@ class ReservationConfirmView(APIView):
             reservation.status = "cancelled"
             reservation.save(update_fields=["status"])
 
-            slot_liberado = reservation.slot
-            primer_esperando = WaitlistEntry.objects.filter(
-                business=slot_liberado.template.business, 
-                status = "waiting"
-            ).order_by("created_at").first()
-
-            
-            if primer_esperando:
-                #hacemos oferta temporal
-                primer_esperando.offered_slot = slot_liberado
-                primer_esperando.offer_expires_at = timezone.now() + timedelta(hours=2)
-                primer_esperando.status = "offered"
-                primer_esperando.save()
-
-                #le mandamos el mail
-                link_oferta = f"http://localhost:3000/waitlist/claim/{primer_esperando.id}/"
-                mensaje_espera = f"""
-                    Hola {primer_esperando.first_name},
-                    ¡Se ha liberado un turno para ti!
-                    Fecha: {slot_liberado.start_datetime.strftime('%d/%m/%Y %H:%M')}
-                    Tienes 2 horas para reclamarlo haciendo clic aquí: {link_oferta}
-                    """
-                send_mail(
-                        "¡Turno Disponible! Lista de Espera",
-                        mensaje_espera,
-                        "soporte@miapp.com",
-                        [primer_esperando.email],
-                        fail_silently=False,
-                    )
+            #buscamos el paciente mas antiguo en la waitlist y le ofrecemos slot
+            offer_slot_to_waitlist(reservation.slot)
                 
             return Response({"detail": "Turno cancelado exitosamente. Gracias por avisar."})
 
@@ -423,10 +372,22 @@ class WaitlistClaimView(APIView):
         'last_name': cliente_lista.last_name,
         'phone': cliente_lista.phone
         })
-        #creamos la reserva
-        Reservation.objects.create(slot=cliente_lista.offered_slot,patient=nuevo_paciente, status="confirmed")
 
-        cliente_lista.status = "booked"
-        cliente_lista.save()
+        reservas_antiguas = Reservation.objects.filter(slot__template__business=cliente_lista.business, patient=nuevo_paciente, status="confirmed", slot__start_datetime__gt=timezone.now())
+        with transaction.atomic():
+        
+            for reserva_antigua in reservas_antiguas:
+                reserva_antigua.status = "cancelled"
+                reserva_antigua.save()
+                
+                #buscamos el paciente mas antiguo en la waitlist y le ofrecemos slot
+                offer_slot_to_waitlist(reserva_antigua.slot)
+            
 
-        return Response({"detail": "Reserva agendada exitosamente!"})
+            #creamos la reserva
+            Reservation.objects.create(slot=cliente_lista.offered_slot,patient=nuevo_paciente, status="confirmed")
+
+            cliente_lista.status = "booked"
+            cliente_lista.save()
+
+            return Response({"detail": "Reserva agendada exitosamente!"})

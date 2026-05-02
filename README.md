@@ -9,7 +9,8 @@ Este backend provee un flujo completo que incluye generación automática de slo
 * **Autenticación Segura (JWT)**: Login de profesionales utilizando JSON Web Tokens para una correcta gestión del acceso a la API.
 * **Gestión de Pacientes**: Un profesional puede registrar, consultar y actualizar datos de sus propios pacientes.
 * **Generación Automática de Slots**: Configuración de `ResourceTemplates` (ej: Todos los lunes de 9:00 a 12:00 en sesiones de 50 min), con los que la API genera automáticamente los turnos (slots) reales.
-* **Flujo de Reservas Público**: Los turnos se confirman por medio de un token criptográfico enviado al e-mail del paciente, permitiendo confirmar o cancelar con un solo clic de forma anónima, sin necesidad de cuentas ni contraseñas temporales adicionales.
+* **Flujo de Reservas Público**: Los turnos se confirman por medio de un token criptográfico enviado al e-mail del paciente, permitiendo confirmar o cancelar con un solo clic de forma anónima.
+* **Lista de Espera Inteligente (Waitlist)**: Sistema de gestión para pacientes que no encuentran turnos disponibles. Permite la reasignación automática de slots liberados por cancelación, ofreciendo el turno al primer paciente en espera con un tiempo de expiración.
 * **Días Libres/Feriados (BlackOutDates)**: El sistema no genera turnos sobre fechas marcadas como bloqueadas por el profesional.
 * **Paginación Inteligente**: Listados paginados integrados para garantizar el rendimiento escalable de la base de datos y facilitar la integración con el Front-End.
 * **Aislamiento por Perfiles**: Cada profesional (Business) solo tiene acceso a sus propios pacientes y reservas.
@@ -117,8 +118,14 @@ A continuación la lista principal de los endpoints disponibles. El esquema comp
 |---|---|---|
 | `GET` | `/public/slots/?business_id=...` | El paciente visualiza todos los turnos libres (vidriera). |
 | `POST` | `/public/reservations/` | Un visitante u oyente anónimo asegura un turno. |
-| `GET` | `/confirm/<token>/` | Validación asíncrona por email (Confirma la reserva). |
-| `GET` | `/confirm/<token>/?cancel=1`| Validación asíncrona por email (Cancela la reserva). |
+| `GET` | `/confirm/<token>/` | Validación asíncrona por email (Verifica estado de reserva). |
+| `GET` | `/confirm/<token>/?cancel=1`| Cancelación de reserva desde el email (Dispara reasignación a Waitlist). |
+
+### Lista de Espera (Público)
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `POST` | `/public/business/<uuid>/waitlist/` | Un paciente se anota en la lista de espera si no hay turnos. |
+| `POST` | `/public/waitlist/<uuid>/claim/` | Un paciente reclama una oferta de turno recibida por email. |
 
 ### Entidades Privadas del Profesional (Requiere Login)
 | Método | Endpoint | Descripción |

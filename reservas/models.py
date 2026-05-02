@@ -282,7 +282,7 @@ class Reservation(models.Model):
                 )
 
 
-#Usuario en de espera
+#Usuario de espera
 class WaitlistEntry(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name= "waitlist_entry")
