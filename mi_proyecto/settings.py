@@ -157,5 +157,5 @@ EMAIL_HOST = 'smtp.resend.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'resend'
-EMAIL_HOST_PASSWORD = config('RESEND_API_KEY') # Esto lee tu archivo .env
+EMAIL_HOST_PASSWORD = config('RESEND_API_KEY', default='') # Esto lee tu archivo .env, el default se deja en produccion ya que encontrará la key en .env
 DEFAULT_FROM_EMAIL = 'onboarding@resend.dev' # Luego podrás poner tu propio dominio
