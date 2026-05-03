@@ -102,16 +102,26 @@ WSGI_APPLICATION = 'mi_proyecto.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME', default='mi_db'),
-        'USER': config('DB_USER', default='mi_usuario'),
-        'PASSWORD': config('DB_PASSWORD', default='mi_password'),
-        'HOST': config('DB_HOST', default='db'),
-        'PORT': config('DB_PORT', default='5432'),
+# Si estamos en un test, usamos SQLite. Si no, PostgreSQL.
+if 'test' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DB_NAME', default='mi_db'),
+            'USER': config('DB_USER', default='mi_usuario'),
+            'PASSWORD': config('DB_PASSWORD', default='mi_password'),
+            'HOST': config('DB_HOST', default='db'),
+            'PORT': config('DB_PORT', default='5432'),
+        }
+    }
+
 
 
 # Password validation
