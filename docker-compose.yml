@@ -6,9 +6,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=mi_db
-      - POSTGRES_USER=mi_usuario
-      - POSTGRES_PASSWORD=mi_password
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
 
   web:
     build: .
@@ -18,10 +18,9 @@ services:
     volumes:
       - .:/app
     environment:
-      - DEBUG=True
-      - DB_NAME=mi_db
-      - DB_USER=mi_usuario
-      - DB_PASSWORD=mi_password
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
       - DB_HOST=db
       - DB_PORT=5432
       - RESEND_API_KEY=${RESEND_API_KEY}
@@ -35,9 +34,9 @@ services:
       - .:/app
     environment:
       - DEBUG=True
-      - DB_NAME=mi_db
-      - DB_USER=mi_usuario
-      - DB_PASSWORD=mi_password
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
       - DB_HOST=db
       - DB_PORT=5432
       - RESEND_API_KEY=${RESEND_API_KEY}
