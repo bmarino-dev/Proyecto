@@ -1,11 +1,48 @@
 version: '3.8'
 
 services:
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=mi_db
+      - POSTGRES_USER=mi_usuario
+      - POSTGRES_PASSWORD=mi_password
+
   web:
     build: .
+    command: python manage.py runserver 0.0.0.0:8001
     ports:
       - "8001:8001"
     volumes:
       - .:/app
     environment:
       - DEBUG=True
+      - DB_NAME=mi_db
+      - DB_USER=mi_usuario
+      - DB_PASSWORD=mi_password
+      - DB_HOST=db
+      - DB_PORT=5432
+      - RESEND_API_KEY=${RESEND_API_KEY}
+    depends_on:
+      - db
+
+  scheduler:
+    build: .
+    command: python manage.py run_scheduler
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=True
+      - DB_NAME=mi_db
+      - DB_USER=mi_usuario
+      - DB_PASSWORD=mi_password
+      - DB_HOST=db
+      - DB_PORT=5432
+      - RESEND_API_KEY=${RESEND_API_KEY}
+    depends_on:
+      - db
+volumes:
+  postgres_data:
+
