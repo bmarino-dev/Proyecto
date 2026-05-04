@@ -11,12 +11,12 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
 
   web:
-    build: .
+    build: ./backend
     command: python manage.py runserver 0.0.0.0:8001
     ports:
       - "8001:8001"
     volumes:
-      - .:/app
+      - ./backend:/app
     environment:
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
@@ -28,10 +28,10 @@ services:
       - db
 
   scheduler:
-    build: .
+    build: ./backend
     command: python manage.py run_scheduler
     volumes:
-      - .:/app
+      - ./backend:/app
     environment:
       - DEBUG=True
       - DB_NAME=${DB_NAME}

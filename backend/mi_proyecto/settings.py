@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'drf_spectacular',
     'django_apscheduler',
+    'corsheaders',
 ]
 
 REST_FRAMEWORK = {
@@ -71,6 +72,7 @@ SPECTACULAR_SETTINGS = {
 AUTH_USER_MODEL = 'reservas.User'
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -175,3 +177,8 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'resend'
 EMAIL_HOST_PASSWORD = config('RESEND_API_KEY', default='') # Esto lee tu archivo .env, el default se deja en produccion ya que encontrará la key en .env
 DEFAULT_FROM_EMAIL = 'onboarding@resend.dev' # Luego podrás poner tu propio dominio
+
+#Permitimos solamente el puerto 3000
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+]
