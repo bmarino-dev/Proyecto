@@ -1,157 +1,86 @@
-# API de Reservas para Profesionales Independientes
+# API y Plataforma SaaS de Reservas para Profesionales
 
-Una API RESTful robusta construida con **Django** y **Django REST Framework (DRF)**, diseñada para que profesionales independientes (psicólogos, nutricionistas, fisioterapeutas, etc.) gestionen sus pacientes, disponibilidades y reservas. 
+Una plataforma Full-Stack robusta diseñada para que profesionales independientes (psicólogos, nutricionistas, fisioterapeutas, etc.) gestionen sus pacientes, disponibilidades y reservas. 
 
-Este backend provee un flujo completo que incluye generación automática de slots en base a plantillas semanales y un sistema de confirmación de turnos vía links únicos por e-mail, sin requerir que los pacientes se registren en la plataforma.
+El proyecto consta de un backend potente (Django REST Framework) y un frontend moderno (Next.js con App Router y Tailwind CSS), proveyendo un flujo completo desde la generación automática de slots hasta la reserva y gestión de lista de espera.
 
 ## 🚀 Características Principales (Features)
 
-* **Autenticación Segura (JWT)**: Login de profesionales utilizando JSON Web Tokens para una correcta gestión del acceso a la API.
-* **Gestión de Pacientes**: Un profesional puede registrar, consultar y actualizar datos de sus propios pacientes.
-* **Generación Automática de Slots**: Configuración de `ResourceTemplates` (ej: Todos los lunes de 9:00 a 12:00 en sesiones de 50 min), con los que la API genera automáticamente los turnos (slots) reales.
-* **Flujo de Reservas Público**: Los turnos se confirman por medio de un token criptográfico enviado al e-mail del paciente, permitiendo confirmar o cancelar con un solo clic de forma anónima.
-* **Lista de Espera Inteligente (Waitlist)**: Sistema de gestión para pacientes que no encuentran turnos disponibles. Permite la reasignación automática de slots liberados por cancelación, ofreciendo el turno al primer paciente en espera con un tiempo de expiración.
-* **Días Libres/Feriados (BlackOutDates)**: El sistema no genera turnos sobre fechas marcadas como bloqueadas por el profesional.
-* **Paginación Inteligente**: Listados paginados integrados para garantizar el rendimiento escalable de la base de datos y facilitar la integración con el Front-End.
-* **Aislamiento por Perfiles**: Cada profesional (Business) solo tiene acceso a sus propios pacientes y reservas.
-* **Integración Continua (CI/CD)**: Batería de tests automatizada ejecutada en entornos limpios por medio de GitHub Actions en cada push.
-* **Documentación Automática OpenAPI (Swagger)**: Esquema autogenerado al vuelo con interfaz gráfica para consultar y probar todos los endpoints sin necesidad de software de terceros.
+* **Arquitectura Full-Stack Separada**: Backend API-First y un Frontend B2B/B2C independiente consumiendo los endpoints.
+* **Autenticación Segura (JWT)**: Login de profesionales utilizando JSON Web Tokens. El Frontend gestiona el estado y protege las rutas privadas (Dashboard).
+* **Gestión de Pacientes y Dashboard Premium**: Interfaz moderna (Glassmorphism) para que el profesional visualice sus próximos turnos y gestione su clínica.
+* **Generación Automática de Slots**: Configuración de `ResourceTemplates` en el backend para generar automáticamente los turnos reales evadiendo fechas bloqueadas (`BlackOutDates`).
+* **Flujo de Reservas Público (Self-Service)**: Formulario público interactivo donde los pacientes pueden ver disponibilidad y asegurar su turno al instante (las reservas nacen como confirmadas para reducir fricción).
+* **Gestión de Cancelación One-Click**: Los pacientes reciben un link seguro por e-mail para cancelar su turno con un solo clic sin necesidad de registrarse.
+* **Lista de Espera Inteligente (Waitlist FIFO)**: (Próximamente en Frontend) Cuando un turno es cancelado, el sistema automáticamente le ofrece el lugar liberado al primer paciente en la lista de espera, otorgándole un tiempo límite para aceptarlo antes de pasar al siguiente.
+* **Documentación Automática OpenAPI (Swagger)**: Esquema autogenerado para consultar y probar la API.
 
 ---
 
 ## 🛠 Entorno de Desarrollo y Requisitos
 
-- Python 3.12 o superior.
-- [Dependencias listadas en `requirements.txt`](requirements.txt)
+- Python 3.12+
+- Node.js 18+ y npm
+- Docker Desktop (Recomendado)
 
 ---
 
 ## 💻 Instalación y Ejecución Local
 
-1. **Clonar el repositorio**
-   ```bash
-   git clone <URL_DEL_REPOSITORIO>
-   cd <NOMBRE_CARPETA_PROYECTO>
-   ```
+### Opción A: Todo con Docker (Recomendada)
+El proyecto está 100% "Dockerizado".
+1. Clonar el repositorio.
+2. Ejecutar: `docker-compose up --build`
+3. Backend disponible en `http://localhost:8001` y Frontend en `http://localhost:3000`.
 
-2. **Crear y activar un entorno virtual**
-   ```bash
-   # En Windows:
-   python -m venv .venv
-   .\.venv\Scripts\activate
+### Opción B: Ejecución Manual
 
-   # En Mac/Linux:
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
+**1. Backend (Django)**
+```bash
+cd backend
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver 8001
+```
 
-3. **Instalar las dependencias**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Configurar Variables de Entorno (.env)**
-   Debés crear un archivo `.env` en la raíz del proyecto (junto a `manage.py`) con las siguientes variables:
-   ```env
-   SECRET_KEY=tu-secret-key-super-secreta-random-aqui
-   DEBUG=True
-   ALLOWED_HOSTS=127.0.0.1,localhost
-   ```
-
-5. **Aplicar las Migraciones y lanzar el servidor local**
-   ```bash
-   python manage.py migrate
-   python manage.py runserver
-   ```
-   *La API estará disponible en `http://127.0.0.1:8000`.*
-
-6. **(Opcional) Ejecutar la Batería de Tests Automatizados**
-   Para verificar la seguridad del sistema frente a Condiciones de Carrera y doble asignación de reservas:
-   ```bash
-   python manage.py test
-   ```
+**2. Frontend (Next.js)**
+En una nueva terminal:
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ---
 
-## 🐳 Despliegue con Docker (Infraestructura como Código)
+## 🔗 Estructura de Endpoints de la API (Resumen)
 
-Este proyecto está 100% "Dockerizado" para evitar problemas de compatibilidad y dependencias ("It works on my machine"). 
-Si tienes **Docker Desktop** instalado, puedes levantar toda la infraestructura sin crear entornos virtuales locales:
+El esquema completo puede consultarse en `http://localhost:8001/api/docs/`.
 
-1. Levantar el proyecto completo:
-   ```bash
-   docker-compose up --build
-   ```
-2. La API estará mapeada automáticamente en `http://localhost:8000/`.
-3. Para apagar y limpiar los contenedores:
-   ```bash
-   docker-compose down
-   ```
+### Públicos (B2C)
+* `GET /public/slots/?business_id=...` : Vidriera de turnos libres.
+* `POST /public/reservations/` : Creación de reserva.
+* `GET /confirm/<token>/` : Confirmación/Cancelación por email.
+* `POST /public/business/<uuid>/waitlist/` : Anotarse en lista de espera.
 
----
-
-## 🔗 Endpoints de la API
-
-A continuación la lista principal de los endpoints disponibles. El esquema completo y visual puede consultarse desde el **Panel de Swagger UI**.
-
-### Documentación Visual e Interactiva (Swagger/OpenAPI)
-| Método | Endpoint | Descripción |
-|---|---|---|
-| `GET` | `/api/docs/` | **Panel Web Interactivo de Swagger UI**. Permite leer parámetros y mandar ejecuciones reales. |
-| `GET` | `/api/schema/` | Esquema nativo de OpenAPI en formato `YAML`/`JSON`. |
-
-### Autenticación (Públicos)
-| Método | Endpoint | Descripción |
-|---|---|---|
-| `POST` | `/auth/signup/` | Registra un nuevo profesional (psicólogo, nutricionista, etc). |
-| `POST` | `/auth/login/` | Inicia sesión (devuelve `access` y `refresh` tokens). |
-| `POST` | `/auth/token/refresh/` | Renueva el access token usando el refresh token. |
-
-### Reservas (Privado)
-| Método | Endpoint | Descripción |
-|---|---|---|
-| `GET, POST` | `/reservations/` | El profesional consulta su agenda o crea reservas manualmente. |
-| `PATCH` | `/reservations/<id>/cancel/` | Cancela una reserva específica desde el panel de control. |
-
-### Flujo de Reserva Self-Service (Público)
-| Método | Endpoint | Descripción |
-|---|---|---|
-| `GET` | `/public/slots/?business_id=...` | El paciente visualiza todos los turnos libres (vidriera). |
-| `POST` | `/public/reservations/` | Un visitante u oyente anónimo asegura un turno. |
-| `GET` | `/confirm/<token>/` | Validación asíncrona por email (Verifica estado de reserva). |
-| `GET` | `/confirm/<token>/?cancel=1`| Cancelación de reserva desde el email (Dispara reasignación a Waitlist). |
-
-### Lista de Espera (Público)
-| Método | Endpoint | Descripción |
-|---|---|---|
-| `POST` | `/public/business/<uuid>/waitlist/` | Un paciente se anota en la lista de espera si no hay turnos. |
-| `POST` | `/public/waitlist/<uuid>/claim/` | Un paciente reclama una oferta de turno recibida por email. |
-
-### Entidades Privadas del Profesional (Requiere Login)
-| Método | Endpoint | Descripción |
-|---|---|---|
-| `GET, POST` | `/patients/` | Lista o crea pacientes asociados al profesional logueado. |
-| `PATCH, DEL`| `/patients/<id>/` | Actualiza o elimina un paciente determinado. |
-| `GET, POST` | `/templates/` | Configura los horarios recurrentes de atención semanal. |
-| `PATCH, DEL`| `/templates/<id>/` | Actualiza o pausa horarios recurrentes asignados. |
-| `GET, POST` | `/blackouts/` | Gestión de fechas bloqueadas (vacaciones, ausencias). |
-| `PATCH, DEL`| `/blackouts/<id>/` | Detalle, actualización y borrado de fechas bloqueadas. |
-
----
+### Privados (B2B - Requieren JWT)
+* `POST /auth/login/` : Obtención de Token.
+* `GET /reservations/` : Listado de reservas del profesional logueado.
+* `GET, POST /patients/`, `/templates/`, `/blackouts/` : Gestión interna clínica.
 
 ---
 
 ## 🤖 Sobre este Proyecto y el Uso de IA
 
-Este backend fue desarrollado como un MVP para consolidar y demostrar mis conocimientos en Python, Django y construcción de APIs RESTful. 
+Este proyecto fue desarrollado como un MVP para consolidar conocimientos en desarrollo Full-Stack. Para alcanzar el nivel de robustez actual, he utilizado **inteligencia artificial como herramienta de asistencia y *pair programming***.
 
-Para alcanzar el nivel de robustez y buenas prácticas presentes en este código, he utilizado **inteligencia artificial como herramienta de asistencia y *pair programming***. Mi enfoque no fue generar código de forma ciega, sino utilizar la IA como un mentor interactivo:
-1. **Diseño y Arquitectura:** Escribí la base y la lógica estructural del proyecto.
-2. **Cuestionamiento Activo:** En lugar de copiar soluciones, cuestioné cada implementación ("¿por qué JWT?", "¿cómo funciona realmente la paginación?", "¿por qué este test falla en esta zona horaria?").
-3. **Refactorización:** Apliqué mejoras sugeridas por la IA (como separar configuraciones en `.env`, optimizar `.gitignore` y agregar endpoints faltantes) solo después de estudiar y comprender profundamente qué problema resolvían.
+Mi enfoque no fue generar código de forma ciega, sino utilizar la IA como un mentor interactivo:
+1. **Diseño y Arquitectura:** Escribí la base y cuestioné cada implementación ("¿Por qué JWT?", "¿Cómo funciona el async/await en React?", "¿Por qué se bloquea la BD para evitar Race Conditions?").
+2. **Desarrollo Iterativo (MVP):** Construí primero la funcionalidad "fea pero segura" y luego apliqué las capas visuales (Tailwind CSS).
+3. **Refactorización Continua:** Separación de lógica y vista, manejo seguro de variables de entorno y optimización de componentes de React.
 
-El objetivo de este repositorio es reflejar una API funcional, pero principalmente documentar un **proceso de aprendizaje activo**, demostrando mi capacidad para leer, auditar, depurar e integrar soluciones de nivel profesional en un flujo de trabajo moderno rodeado de nuevas herramientas.
-
----
+El objetivo de este repositorio documentar un **proceso de aprendizaje activo**, demostrando mi capacidad para construir soluciones B2B y B2C completas en un flujo de trabajo moderno rodeado de nuevas herramientas.
 
 *Bruno Marino.*
