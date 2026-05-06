@@ -39,6 +39,7 @@ class Business(models.Model):
     phone = models.CharField(
         max_length=20,
         blank=True,
+        null=True,
         validators=[RegexValidator(r'^\+?\d{8,15}$', message="Número de teléfono inválido")]
     )
     specialty = models.CharField(
@@ -77,6 +78,7 @@ class Patient(models.Model):
     phone = models.CharField(
         max_length=20,
         blank=True,
+        null=True,
         validators=[RegexValidator(r'^\+?\d{8,15}$', message="Número de teléfono inválido")]
     )
     notes = models.TextField(blank=True)

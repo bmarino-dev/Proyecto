@@ -178,7 +178,11 @@ EMAIL_HOST_USER = 'resend'
 EMAIL_HOST_PASSWORD = config('RESEND_API_KEY', default='') # Esto lee tu archivo .env, el default se deja en produccion ya que encontrará la key en .env
 DEFAULT_FROM_EMAIL = 'onboarding@resend.dev' # Luego podrás poner tu propio dominio
 
-#Permitimos solamente el puerto 3000
+# Configuración de Emails para desarrollo (se ven en la terminal)((Borrar al querer usar Resend nuevamente))
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Configuración de CORS para que el Frontend (puerto 3000) pueda hablar con el Backend (puerto 8001)
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
