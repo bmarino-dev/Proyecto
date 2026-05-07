@@ -1,5 +1,6 @@
 'use client'
 
+import Link from "next/link";
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -110,6 +111,14 @@ export default function Login({ params }) {
                         ) : 'Iniciar Sesión'}
                     </button>
                 </form>
+                <div className="mt-8 text-center">
+                    <Link
+                        href="/signup"
+                        className="text-slate-400 hover:text-blue-400 transition-all text-sm"
+                    >
+                        ¿No tienes una cuenta? <span className="font-bold">Registrate</span>
+                    </Link>
+                </div>
             </div>
         </div>
     )

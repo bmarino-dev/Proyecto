@@ -77,7 +77,10 @@ export default function FormularioReserva({ slots, business_id }) {
                                 }`}
                         >
                             <p className="text-xs text-slate-400">
-                                {new Date(slot.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                {(() => {
+                                    const [y, m, d] = slot.date.split('-');
+                                    return new Date(y, m - 1, d).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+                                })()}
                             </p>
                             <p className="font-bold">
                                 {slot.start_datetime.substring(11, 16)} hs

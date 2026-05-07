@@ -9,9 +9,14 @@ DEFAULT_GENERATE_DAYS = 30
 
 #Devuelve "True" si day esta dentro de algun BlackOutDates del negocio.
 def _is_blackout(business, day: ddate) -> bool:
-    # busca blackouts que contengan la fecha (si end_date es null se asume día único)
-    return BlackOutDates.objects.filter(business = business).filter(Q(start_date=day, end_date__isnull = True) | Q(start_date__lte=day, end_date__gte = day)
+    # Filtro más directo: la fecha debe estar entre start y end (o ser igual a start si end es null)
+    return BlackOutDates.objects.filter(
+        business=business
+    ).filter(
+        Q(start_date__lte=day, end_date__gte=day) | 
+        Q(start_date=day, end_date__isnull=True)
     ).exists()
+
 
 #Combina date + time y devuelve datetime aware según timezone actual.    
 def _combine_aware(dt_date: ddate, dt_time: dtime):

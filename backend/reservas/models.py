@@ -102,6 +102,7 @@ class Patient(models.Model):
 # FECHAS BLOQUEADAS
 
 class BlackOutDates(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     business = models.ForeignKey(
         Business,
         on_delete=models.CASCADE,

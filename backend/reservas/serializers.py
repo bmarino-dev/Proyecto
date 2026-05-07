@@ -3,6 +3,7 @@ from django.db import transaction
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from .models import Business, Patient, ResourceTemplate, ResourceSlot, Reservation, BlackOutDates, WaitlistEntry
+from .utils import generate_slots_for_template
 import re
 from django.core.mail import send_mail
 
@@ -122,7 +123,21 @@ class ResourceTemplateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         request = self.context.get("request")
         validated_data['business'] = request.user.business_profile
-        return super().create(validated_data)
+        instance = super().create(validated_data)
+        
+        # Generar slots inmediatamente al crear la plantilla
+        generate_slots_for_template(instance)
+        
+        return instance
+
+    def update(self, instance, validated_data):
+        instance = super().update(instance, validated_data)
+        
+        # Si la plantilla está activa, regeneramos/actualizamos slots
+        if instance.active:
+            generate_slots_for_template(instance)
+            
+        return instance
 
 
 class BlackOutDateSerializer(serializers.ModelSerializer):

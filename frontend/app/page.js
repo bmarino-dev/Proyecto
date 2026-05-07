@@ -17,17 +17,17 @@ export default function Home() {
       {/* Botones de Acción */}
       <div className="flex gap-4">
         <Link
-          href="/reservar/ejemplo-doctor"
+          href="/demo"
           className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full transition-all"
         >
           Ver Demo Pública
         </Link>
 
         <Link
-          href="/dashboard"
+          href="/login"
           className="bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-8 rounded-full border border-slate-700 transition-all"
         >
-          Panel Profesional
+          Inicia Sesión
         </Link>
       </div>
 
