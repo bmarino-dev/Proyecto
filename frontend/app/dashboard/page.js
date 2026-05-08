@@ -110,15 +110,20 @@ export default function Dashboard() {
                                         <div key={reserva.id} className="bg-slate-950 border border-slate-800 hover:border-blue-500/50 p-6 rounded-2xl transition-all shadow-lg hover:shadow-blue-900/20">
                                             <div className="flex justify-between items-start mb-4">
                                                 <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-xl text-white font-bold">
-                                                    {reserva.patient?.first_name?.charAt(0) || "P"}
+                                                    {reserva.reservation_firstname?.charAt(0) || "P"}
                                                 </div>
                                                 <span className="px-3 py-1 bg-green-500/10 text-green-400 border border-green-500/20 rounded-full text-xs font-medium uppercase tracking-wider">
                                                     {reserva.status}
                                                 </span>
                                             </div>
                                             <h3 className="text-lg font-bold text-white mb-1">
-                                                {reserva.patient?.first_name} {reserva.patient?.last_name}
+                                                {reserva.reservation_firstname} {reserva.reservation_lastname}
                                             </h3>
+                                            {reserva.reservation_phone && (
+                                                <p className="text-slate-400 text-sm flex items-center gap-1">
+                                                    <span className="text-xs">📞</span> {reserva.reservation_phone}
+                                                </p>
+                                            )}
                                             <div className="mt-4 pt-4 border-t border-slate-800 flex items-center gap-2 text-blue-400">
                                                 <span className="text-lg">🕒</span>
                                                 <span className="font-mono font-medium">

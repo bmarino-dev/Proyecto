@@ -210,9 +210,13 @@ class ReservationCreateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        validated_data.pop("slot_id")
-        validated_data.pop("patient_id")
-        return Reservation.objects.create(**validated_data)
+        patient = validated_data['patient']
+        # Tomamos los datos actuales del paciente para el snapshot
+        validated_data['reservation_firstname'] = patient.first_name
+        validated_data['reservation_lastname'] = patient.last_name
+        validated_data['reservation_phone'] = patient.phone
+        return super().create(validated_data)
+
 
 
 class ReservationDetailSerializer(serializers.ModelSerializer):
@@ -226,6 +230,7 @@ class ReservationDetailSerializer(serializers.ModelSerializer):
         model = Reservation
         fields = (
             "id", "slot", "patient", "status",
+            "reservation_firstname", "reservation_lastname", "reservation_phone",
             "reminder_count", "last_reminder_sent_at", 
             "notes", "created_at"
         )
@@ -289,16 +294,17 @@ class ReservationPublicSerializer(serializers.ModelSerializer):
                     "phone": phone
                 }
             )
-
+            # Actualizamos los datos si el paciente ya existía
             if not created:
-                # Actualizamos los datos si el paciente ya existía
-                patient.first_name = first_name
-                patient.last_name = last_name
-                if phone:
+                if not patient.first_name:
+                    patient.first_name = first_name
+                if not patient.last_name:
+                    patient.last_name = last_name
+                if phone and not patient.phone :
                     patient.phone = phone
                 patient.save()
             
-            reservation = Reservation.objects.create(slot=slot, patient=patient, status="confirmed", **validated_data)
+            reservation = Reservation.objects.create(reservation_firstname=first_name,  reservation_lastname=last_name, reservation_phone=phone, slot=slot, patient=patient, status="confirmed", **validated_data)
 
             #Generar URL de confirmación
             confirm_url = f"http://localhost:8000/confirm/{reservation.confirmation_token}/"

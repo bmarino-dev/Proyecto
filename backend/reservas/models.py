@@ -229,9 +229,19 @@ class ResourceSlot(models.Model):
 # Incluye el flujo de confirmación por email.
 
 class Reservation(models.Model):
+    
     STATUS_CHOICES = (
         ("confirmed", "Confirmado"),
         ("cancelled", "Cancelado"),
+    )
+
+    reservation_firstname = models.CharField(max_length=100)
+    reservation_lastname = models.CharField(max_length=100)
+    reservation_phone = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        validators=[RegexValidator(r'^\+?\d{8,15}$', message="Número de teléfono inválido")]
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -268,7 +278,7 @@ class Reservation(models.Model):
         ordering = ["slot__start_datetime"]
 
     def __str__(self):
-        return f"{self.patient} - {self.slot.start_datetime.isoformat()} ({self.status})"
+        return f"{self.reservation_firstname} {self.reservation_lastname} - {self.slot.start_datetime.isoformat()}"
 
     def clean(self):
         if self.slot.start_datetime < timezone.now():
