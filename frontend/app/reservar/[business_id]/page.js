@@ -3,7 +3,7 @@ import FormularioReserva from '@/app/components/FormularioReserva'
 export default async function ReservaPage({ params }) {
     const { business_id } = await params;
 
-    // 1. Pedimos los datos del médico
+    // 1. Pedimos los datos del médico (esto sigue siendo Server Side: rápido y sin parpadeo)
     const response = await fetch(`http://localhost:8001/public/business/${business_id}/`, {
         cache: 'no-store'
     });
@@ -19,17 +19,8 @@ export default async function ReservaPage({ params }) {
 
     const doctor = await response.json();
 
-    // 2. Pedimos los turnos (slots) disponibles
-    const responseSlots = await fetch(`http://localhost:8001/public/slots/?business_id=${business_id}`, {
-        cache: 'no-store'
-    });
-
-    const dataSlots = await responseSlots.json();
-
-    // EXPLICACIÓN: Si Django usa paginación, los turnos vienen en .results
-    // Si no, vienen directo en el objeto. Esto cubre ambos casos:
-    const slots = dataSlots.results || dataSlots;
-
+    // 2. Los slots los carga el cliente (FormularioReserva) para poder paginar dinámicamente.
+    //    El Server Component solo pasa el business_id como prop.
     return (
         <div className="flex flex-col items-center p-8 text-white max-w-4xl mx-auto">
             {/* Cabecera del Perfil */}
@@ -49,8 +40,9 @@ export default async function ReservaPage({ params }) {
                 </div>
             </div>
 
-            {/* Le pasamos los slots y el business_id al componente interactivo */}
-            <FormularioReserva slots={slots} business_id={business_id} />
+            {/* FormularioReserva fetchea y pagina los slots internamente */}
+            <FormularioReserva business_id={business_id} />
         </div>
     );
 }
+

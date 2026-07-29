@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# ReservaPro - Frontend (Next.js) 🚀
 
-## Getting Started
+Este es el frontend del MVP de **ReservaPro**, una plataforma SaaS para la gestión de turnos y agendas de profesionales independientes. Construido con **Next.js (App Router)** y **Tailwind CSS**, este cliente se comunica con una API REST desarrollada en Django.
 
-First, run the development server:
+## 🌟 Características Principales
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### 🏛️ Para Profesionales (B2B Dashboard)
+- **Dashboard Moderno:** Visualización de próximos turnos con diseño glassmorphism.
+- **Gestión de Agenda:** Creación de plantillas semanales y generación automática de slots.
+- **Control de Ausencias:** Bloqueo de fechas específicas (vacaciones, feriados).
+- **Gestión de Pacientes:** Base de datos de clientes con historial de visitas.
+- **Seguridad:** Autenticación robusta mediante **JWT**.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 👤 Para Pacientes (B2C Public Flow)
+- **Reserva Self-Service:** Interfaz intuitiva para elegir profesional, fecha y hora.
+- **Zero-Friction:** Los pacientes no necesitan crear cuenta para reservar.
+- **Confirmación por Email:** Enlaces mágicos para confirmar o cancelar turnos con un solo clic.
+- **Lista de Espera (Waitlist):** (En desarrollo ⏳) Inscripción automática si no hay turnos disponibles y reasignación inteligente.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## 🛠️ Stack Tecnológico
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Framework:** Next.js 14 (App Router)
+- **Estilos:** Tailwind CSS
+- **Iconos:** Lucide React / Emojis Premium
+- **Autenticación:** JWT (JSON Web Tokens)
+- **Fetching de Datos:** Fetch API / React Hooks (`useState`, `useEffect`)
 
-## Learn More
+## 🚀 Cómo empezar
 
-To learn more about Next.js, take a look at the following resources:
+1.  **Instalar dependencias:**
+    ```bash
+    npm install
+    ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2.  **Configurar variables de entorno:**
+    Crea un archivo `.env.local` en la raíz con:
+    ```env
+    NEXT_PUBLIC_API_URL=http://localhost:8000
+    ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3.  **Correr el servidor de desarrollo:**
+    ```bash
+    npm run dev
+    ```
 
-## Deploy on Vercel
+4.  **Abrir en el navegador:**
+    Visita [http://localhost:3000](http://localhost:3000)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📐 Decisiones de Arquitectura
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Make it Work, Make it Right, Make it Pretty:** El desarrollo siguió este mantra, priorizando primero la conexión funcional con la API y luego el pulido estético con Tailwind.
+- **Snapshotting de Datos:** El frontend está sincronizado con la lógica de backend para mostrar los datos "congelados" de la reserva (`reservation_firstname`), garantizando que la información no cambie si el paciente actualiza su perfil.
+- **Responsividad:** Diseñado con un enfoque *mobile-first* para que los pacientes puedan reservar cómodamente desde su celular.
+
+---
+Desarrollado con ❤️ por Bruno.

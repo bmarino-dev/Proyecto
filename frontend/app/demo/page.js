@@ -1,32 +1,57 @@
 'use client'
 
+// hooks de React
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
-// Componente para secciones con animación al entrar en el viewport
+// componente reutilizable que detecta cuando entra en pantalla
 function FadeInSection({ children }) {
+
+    // estado: si el elemento ya es visible o no
+    // cuando cambia → React re-renderiza el componente
     const [isVisible, setVisible] = useState(false);
+
+    // guardamos el elemento real del DOM (el div)
     const [domRef, setDomRef] = useState(null);
 
     useEffect(() => {
+
+        // crea el IntersectionObserver (API del navegador, no de React)
+        // callback se ejecuta cuando cambia visibilidad del elemento observado
         const observer = new IntersectionObserver(entries => {
+
+            // entries = lista de elementos observados que cambiaron estado
             entries.forEach(entry => {
+
+                // si el elemento entra en pantalla
                 if (entry.isIntersecting) {
+                    // cambia estado → dispara re-render en React
                     setVisible(true);
                 }
             });
-        }, { threshold: 0.1 });
 
+        }, { threshold: 0.1 }); // 10% visible para activarse
+
+        // si ya existe el elemento DOM, lo empezamos a observar
         if (domRef) observer.observe(domRef);
-        return () => { if (domRef) observer.unobserve(domRef); };
-    }, [domRef]);
+
+        // cleanup: cuando el componente se desmonta
+        return () => {
+            if (domRef) observer.unobserve(domRef);
+        };
+
+    }, [domRef]); // se ejecuta cuando domRef cambia
 
     return (
         <div
+            // aquí React guarda el nodo real del DOM en domRef
             ref={setDomRef}
-            className={`transition-all duration-[1200ms] ease-out transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
-                }`}
+
+            // clases cambian según estado → esto dispara la animación CSS
+            className={`transition-all duration-[1200ms] ease-out transform 
+            ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
         >
+            {/* contenido que se pasa desde afuera */}
             {children}
         </div>
     );
@@ -70,7 +95,9 @@ export default function DemoPage() {
             {/* 2. EL PROBLEMA */}
             <section id="problem" className="py-32 px-6 bg-slate-50">
                 <div className="max-w-7xl mx-auto">
+                    {/* cada FadeInSection tiene su propio observer independiente */}
                     <FadeInSection>
+                        {/* children = todo lo que está dentro del componente */}
                         <div className="grid lg:grid-cols-2 gap-20 items-center">
                             <div>
                                 <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-8 leading-tight">
@@ -267,4 +294,4 @@ export default function DemoPage() {
             `}</style>
         </div>
     );
-}
+}   
