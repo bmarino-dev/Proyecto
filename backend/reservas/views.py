@@ -354,6 +354,37 @@ class WaitlistClaimView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
     
+    def get(self, request, waitlist_id):
+        cliente_lista = get_object_or_404(WaitlistEntry, id=waitlist_id)
+        
+        if cliente_lista.status != "offered" or not cliente_lista.offered_slot:
+            return Response({"detail": "No tienes una oferta de turno activa"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if timezone.now() > cliente_lista.offer_expires_at:
+            cliente_lista.status = "expired"
+            cliente_lista.save()
+            return Response({"detail": "El tiempo de confirmación expiró"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        return Response({
+            "id": cliente_lista.id,
+            "first_name": cliente_lista.first_name,
+            "last_name": cliente_lista.last_name,
+            "email": cliente_lista.email,
+            "offer_expires_at": cliente_lista.offer_expires_at,
+            "slot": {
+                "id": cliente_lista.offered_slot.id,
+                "start_datetime": cliente_lista.offered_slot.start_datetime,
+                "end_datetime": cliente_lista.offered_slot.end_datetime,
+                "date": cliente_lista.offered_slot.date,
+            },
+            "business": {
+                "id": cliente_lista.business.id,
+                "full_name": cliente_lista.business.full_name,
+                "specialty": cliente_lista.business.specialty,
+                "specialty_display": cliente_lista.business.get_specialty_display(),
+            }
+        })
+
     def post(self, request, waitlist_id):
         
         cliente_lista = get_object_or_404(WaitlistEntry, id=waitlist_id)
@@ -385,7 +416,8 @@ class WaitlistClaimView(APIView):
             
 
             #creamos la reserva
-            Reservation.objects.create(slot=cliente_lista.offered_slot,patient=nuevo_paciente, status="confirmed")
+            Reservation.objects.create(reservation_firstname=nuevo_paciente.first_name,
+            reservation_lastname=nuevo_paciente.last_name, slot=cliente_lista.offered_slot,patient=nuevo_paciente, status="confirmed")
 
             cliente_lista.status = "booked"
             cliente_lista.save()
