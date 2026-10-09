@@ -1,4 +1,5 @@
 import FormularioReserva from '@/app/components/FormularioReserva'
+import { Icon } from "@/app/components/Visuals";
 
 export default async function ReservaPage({ params }) {
     const { business_id } = await params;
@@ -10,9 +11,9 @@ export default async function ReservaPage({ params }) {
 
     if (!response.ok) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] text-white">
-                <h1 className="text-2xl font-bold text-red-400">Ups! Profesional no encontrado</h1>
-                <p className="text-slate-400">Verificá el link e intentá de nuevo.</p>
+            <div className="feedback-screen flex flex-col items-center justify-center text-ink">
+                <h1 className="text-2xl font-semibold text-danger">Ups! Profesional no encontrado</h1>
+                <p className="text-secondary">Verificá el link e intentá de nuevo.</p>
             </div>
         );
     }
@@ -22,21 +23,21 @@ export default async function ReservaPage({ params }) {
     // 2. Los slots los carga el cliente (FormularioReserva) para poder paginar dinámicamente.
     //    El Server Component solo pasa el business_id como prop.
     return (
-        <div className="flex flex-col items-center p-8 text-white max-w-4xl mx-auto">
+        <div className="patient-page flex flex-col items-center text-ink">
             {/* Cabecera del Perfil */}
-            <div className="bg-slate-800 w-full p-8 rounded-3xl border border-slate-700 shadow-xl text-center">
-                <div className="w-24 h-24 bg-blue-600 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl font-bold uppercase">
+            <div className="professional-card w-full">
+                <div className="professional-avatar rounded-full mx-auto mb-4 flex items-center justify-center uppercase">
                     {doctor.full_name?.[0] || "D"}
                 </div>
 
-                <h1 className="text-4xl font-bold mb-2">{doctor.full_name}</h1>
-                <p className="text-blue-400 font-medium uppercase tracking-widest text-sm">
+                <h1 className="text-4xl font-semibold mb-2">{doctor.full_name}</h1>
+                <p className="specialty-label font-medium uppercase">
                     {doctor.specialty_display || doctor.specialty}
                 </p>
 
-                <div className="mt-6 flex justify-center gap-4 text-slate-400 text-sm">
-                    <span>📍 {doctor.address || 'Consultorio Virtual'}</span>
-                    <span>📞 {doctor.phone || 'Sin teléfono'}</span>
+                <div className="professional-details flex justify-center text-secondary">
+                    <span><Icon name="pin" /> {doctor.address || 'Consultorio Virtual'}</span>
+                    <span><Icon name="phone" /> {doctor.phone || 'Sin teléfono'}</span>
                 </div>
             </div>
 

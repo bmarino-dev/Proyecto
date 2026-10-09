@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { Icon } from "@/app/components/Visuals";
 import Link from 'next/link'
 
 // ─────────────────────────────────────────────────────────
@@ -210,13 +211,13 @@ export default function FormularioReserva({ business_id }) {
     // ─────────────────────────────────────────────────────
     if (estado === 'exito') {
         return (
-            <div className="mt-12 w-full bg-green-900/30 border border-green-500 p-12 rounded-3xl text-center">
-                <p className="text-5xl mb-4">✅</p>
-                <h2 className="text-2xl font-bold text-green-400">¡Turno confirmado!</h2>
-                <p className="text-slate-400 mt-2">
+            <div className="feedback-card mt-6 w-full text-center">
+                <p className="text-5xl mb-4"><Icon name="check" /></p>
+                <h2 className="text-2xl font-semibold text-brand">¡Turno confirmado!</h2>
+                <p className="text-secondary mt-2">
                     {parseLocalDate(slotSeleccionado.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })} a las {slotSeleccionado.start_datetime.substring(11, 16)} hs
                 </p>
-                <p className="text-slate-500 mt-3 text-sm">Revisá tu email para ver los detalles y el link de cancelación.</p>
+                <p className="text-secondary mt-3 text-sm">Revisá tu email para ver los detalles y el link de cancelación.</p>
             </div>
         )
     }
@@ -225,33 +226,33 @@ export default function FormularioReserva({ business_id }) {
     // RENDER PRINCIPAL
     // ─────────────────────────────────────────────────────
     return (
-        <div className="mt-12 w-full space-y-6">
+        <div className="reservation-flow w-full space-y-6">
 
             {/* ══════════════════════════════════════
                 BLOQUE 1: CALENDARIO
             ══════════════════════════════════════ */}
-            <div className="bg-slate-800 rounded-3xl border border-slate-700 p-6 shadow-xl">
+            <div className="calendar-panel border border-line">
 
                 {/* Cabecera del mes con flechas */}
                 <div className="flex items-center justify-between mb-6">
                     <button
                         onClick={mesAnterior}
                         disabled={esMesActual}
-                        className="w-10 h-10 rounded-xl bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-slate-300 transition-colors"
+                        className="w-10 h-10 rounded-xl bg-muted hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-secondary transition-colors"
                         aria-label="Mes anterior"
                     >
                         ←
                     </button>
 
                     <div className="text-center">
-                        <h2 className="text-xl font-bold text-white capitalize">
+                        <h2 className="text-xl font-semibold text-ink capitalize">
                             {MESES[mesVista.month]} {mesVista.year}
                         </h2>
                         {cargandoMes && (
-                            <p className="text-xs text-blue-400 mt-1 animate-pulse">Cargando disponibilidad…</p>
+                            <p className="text-xs text-brand mt-1 animate-pulse">Cargando disponibilidad…</p>
                         )}
                         {!cargandoMes && (
-                            <p className="text-xs text-slate-500 mt-1">
+                            <p className="text-xs text-secondary mt-1">
                                 {diasDisponibles.size} día{diasDisponibles.size !== 1 ? 's' : ''} con turnos libres
                             </p>
                         )}
@@ -259,7 +260,7 @@ export default function FormularioReserva({ business_id }) {
 
                     <button
                         onClick={mesSiguiente}
-                        className="w-10 h-10 rounded-xl bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-slate-300 transition-colors"
+                        className="w-10 h-10 rounded-xl bg-muted hover:bg-muted flex items-center justify-center text-secondary transition-colors"
                         aria-label="Mes siguiente"
                     >
                         →
@@ -269,7 +270,7 @@ export default function FormularioReserva({ business_id }) {
                 {/* Encabezados días de la semana */}
                 <div className="grid grid-cols-7 mb-2">
                     {DIAS_SEMANA.map(dia => (
-                        <div key={dia} className="text-center text-xs font-semibold text-slate-500 py-1 uppercase tracking-wider">
+                        <div key={dia} className="text-center text-xs font-semibold text-secondary py-1 uppercase tracking-wider">
                             {dia}
                         </div>
                     ))}
@@ -290,14 +291,14 @@ export default function FormularioReserva({ business_id }) {
                         const fechaDate = new Date(mesVista.year, mesVista.month, dia)
                         const esPasado = fechaDate < new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
 
-                        let clases = 'relative aspect-square flex flex-col items-center justify-center rounded-xl text-sm font-medium transition-all duration-200 '
+                        let clases = 'calendar-day relative flex flex-col items-center justify-center font-medium '
 
                         if (seleccionado) {
-                            clases += 'bg-blue-600 text-white shadow-lg shadow-blue-900/50 scale-105 ring-2 ring-blue-400'
+                            clases += 'calendar-day-selected'
                         } else if (disponible && !esPasado) {
-                            clases += 'bg-slate-700 text-white hover:bg-blue-500/30 hover:border-blue-500 border border-slate-600 cursor-pointer'
+                            clases += 'calendar-day-available'
                         } else {
-                            clases += 'text-slate-600 cursor-default'
+                            clases += 'calendar-day-unavailable'
                         }
 
                         return (
@@ -311,7 +312,7 @@ export default function FormularioReserva({ business_id }) {
                                 <span>{dia}</span>
                                 {/* Punto indicador de disponibilidad */}
                                 {disponible && !esPasado && !seleccionado && (
-                                    <span className="absolute bottom-1.5 w-1 h-1 rounded-full bg-blue-400" />
+                                    <span className="absolute bottom-1.5 w-1 h-1 rounded-full bg-brand" />
                                 )}
                             </button>
                         )
@@ -319,13 +320,13 @@ export default function FormularioReserva({ business_id }) {
                 </div>
 
                 {/* Leyenda */}
-                <div className="flex items-center gap-4 mt-5 pt-4 border-t border-slate-700 text-xs text-slate-500">
+                <div className="calendar-legend flex items-center gap-4 mt-5 pt-4 border-t border-line text-xs text-secondary">
                     <span className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-blue-400 inline-block" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-brand/50 inline-block" />
                         Con disponibilidad
                     </span>
                     <span className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-brand inline-block" />
                         Día seleccionado
                     </span>
                 </div>
@@ -335,19 +336,19 @@ export default function FormularioReserva({ business_id }) {
                 BLOQUE 2: HORARIOS DEL DÍA SELECCIONADO
             ══════════════════════════════════════ */}
             {diaSeleccionado && (
-                <div className="bg-slate-800/60 rounded-3xl border border-slate-700 p-6">
-                    <h3 className="font-bold text-lg text-white mb-1">
+                <div className="slots-panel border border-line">
+                    <h3 className="font-semibold text-lg text-ink mb-1">
                         {parseLocalDate(diaSeleccionado).toLocaleDateString('es-ES', {
                             weekday: 'long', day: 'numeric', month: 'long'
                         })}
                     </h3>
-                    <p className="text-slate-400 text-sm mb-5">Seleccioná el horario que más te convenga</p>
+                    <p className="text-secondary text-sm mb-5">Seleccioná el horario que más te convenga</p>
 
                     {cargandoSlots ? (
                         // Skeleton horarios
                         <div className="flex flex-wrap gap-3">
                             {Array.from({ length: 6 }).map((_, i) => (
-                                <div key={i} className="h-12 w-24 bg-slate-700 rounded-xl animate-pulse" />
+                                <div key={i} className="h-12 w-24 bg-muted rounded-xl animate-pulse" />
                             ))}
                         </div>
                     ) : slotsDelDia.length > 0 ? (
@@ -359,11 +360,10 @@ export default function FormularioReserva({ business_id }) {
                                     <button
                                         key={slot.id}
                                         onClick={() => setSlotSeleccionado(slot)}
-                                        className={`px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 border
-                                            ${esSeleccionado
-                                                ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-900/40 scale-105'
-                                                : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-blue-600/20 hover:border-blue-500'
-                                            }`}
+                                        className={` slot-button px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-200 border ${esSeleccionado
+                                                ? 'bg-brand border-brand/20 text-white shadow-card'
+                                                : 'bg-muted border-line text-secondary hover:bg-brand-soft hover:border-brand/20'
+                                            }  `}
                                     >
                                         {hora} hs
                                     </button>
@@ -371,7 +371,7 @@ export default function FormularioReserva({ business_id }) {
                             })}
                         </div>
                     ) : (
-                        <p className="text-slate-500 text-sm">No hay horarios disponibles para este día.</p>
+                        <p className="text-secondary text-sm">No hay horarios disponibles para este día.</p>
                     )}
                 </div>
             )}
@@ -382,75 +382,75 @@ export default function FormularioReserva({ business_id }) {
             {slotSeleccionado && (
                 <form
                     onSubmit={handleSubmit}
-                    className="bg-slate-800 p-8 rounded-3xl border border-blue-500/30 shadow-xl shadow-blue-900/10"
+                    className="booking-form border border-line"
                 >
                     {/* Resumen del turno elegido */}
-                    <div className="flex items-center gap-4 mb-6 p-4 bg-blue-600/10 border border-blue-500/20 rounded-2xl">
-                        <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
-                            📅
+                    <div className="booking-summary flex items-center gap-4 mb-6 p-4 border border-brand/20 rounded-2xl">
+                        <div className="icon-tile">
+                            <Icon name="calendar" />
                         </div>
                         <div>
-                            <p className="font-bold text-white">
+                            <p className="font-semibold text-ink">
                                 {parseLocalDate(slotSeleccionado.date).toLocaleDateString('es-ES', {
                                     weekday: 'long', day: 'numeric', month: 'long'
                                 })}
                             </p>
-                            <p className="text-blue-400 text-sm">
+                            <p className="text-brand text-sm">
                                 {slotSeleccionado.start_datetime.substring(11, 16)} hs
                             </p>
                         </div>
                         <button
                             type="button"
                             onClick={() => setSlotSeleccionado(null)}
-                            className="ml-auto text-slate-500 hover:text-slate-300 text-sm transition-colors"
+                            className="ml-auto text-secondary hover:text-secondary text-sm transition-colors"
                         >
                             Cambiar
                         </button>
                     </div>
 
-                    <h3 className="text-lg font-bold text-white mb-1">Completá tus datos</h3>
-                    <p className="text-slate-400 text-sm mb-6">Te enviaremos la confirmación por email.</p>
+                    <h3 className="text-lg font-semibold text-ink mb-1">Completá tus datos</h3>
+                    <p className="text-secondary text-sm mb-6">Te enviaremos la confirmación por email.</p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
-                            <label className="block text-sm text-slate-400 mb-1">Nombre <span className="text-red-400">*</span></label>
-                            <input type="text" name="first_name" required onChange={handleInput}
-                                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                            <label htmlFor="field-first_name" className="block text-sm text-secondary mb-1">Nombre <span className="text-danger">*</span></label>
+                            <input id="field-first_name" type="text" name="first_name" required onChange={handleInput}
+                                className="w-full bg-surface border border-line rounded-xl px-4 py-3 text-ink focus:outline-none focus:border-brand/20 transition-colors form-control"
                                 placeholder="Juan" />
                         </div>
                         <div>
-                            <label className="block text-sm text-slate-400 mb-1">Apellido <span className="text-red-400">*</span></label>
-                            <input type="text" name="last_name" required onChange={handleInput}
-                                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                            <label htmlFor="field-last_name" className="block text-sm text-secondary mb-1">Apellido <span className="text-danger">*</span></label>
+                            <input id="field-last_name" type="text" name="last_name" required onChange={handleInput}
+                                className="w-full bg-surface border border-line rounded-xl px-4 py-3 text-ink focus:outline-none focus:border-brand/20 transition-colors form-control"
                                 placeholder="Pérez" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div>
-                            <label className="block text-sm text-slate-400 mb-1">Email <span className="text-red-400">*</span></label>
-                            <input type="email" name="email" required onChange={handleInput}
-                                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                            <label htmlFor="field-email" className="block text-sm text-secondary mb-1">Email <span className="text-danger">*</span></label>
+                            <input id="field-email" type="email" name="email" required onChange={handleInput}
+                                className="w-full bg-surface border border-line rounded-xl px-4 py-3 text-ink focus:outline-none focus:border-brand/20 transition-colors form-control"
                                 placeholder="juan@email.com" />
                         </div>
                         <div>
-                            <label className="block text-sm text-slate-400 mb-1">Teléfono <span className="text-red-400">*</span></label>
-                            <input type="tel" name="phone" required onChange={handleInput}
-                                className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                            <label htmlFor="field-phone" className="block text-sm text-secondary mb-1">Teléfono <span className="text-danger">*</span></label>
+                            <input id="field-phone" type="tel" name="phone" required onChange={handleInput}
+                                className="w-full bg-surface border border-line rounded-xl px-4 py-3 text-ink focus:outline-none focus:border-brand/20 transition-colors form-control"
                                 placeholder="+598 12 345 678" />
                         </div>
                     </div>
 
                     {estado === 'error' && (
-                        <div className="mb-4 p-3 bg-red-900/30 border border-red-500/40 rounded-xl text-red-400 text-sm">
-                            ⚠️ Hubo un error al reservar. Es posible que el turno ya no esté disponible. Intentá de nuevo.
+                        <div className="mb-4 p-3 bg-danger-soft border border-danger/20 rounded-xl text-danger text-sm">
+                            <Icon name="alert" /> Hubo un error al reservar. Es posible que el turno ya no esté disponible. Intentá de nuevo.
                         </div>
                     )}
 
                     <button
                         type="submit"
                         disabled={estado === 'enviando'}
-                        className="w-full bg-blue-600 hover:bg-blue-500 active:scale-[0.99] disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all"
+                        className="w-full bg-brand hover:bg-brand-dark disabled:bg-brand/50 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-xl transition-all"
                     >
                         {estado === 'enviando' ? '⏳ Confirmando reserva…' : 'Confirmar Reserva →'}
                     </button>
@@ -460,21 +460,21 @@ export default function FormularioReserva({ business_id }) {
             {/* ══════════════════════════════════════
                 BLOQUE PERMANENTE DE LISTA DE ESPERA
             ══════════════════════════════════════ */}
-            <div className="w-full mt-8 bg-slate-800/80 border border-slate-700/80 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl backdrop-blur-sm">
+            <div className="waitlist-callout w-full mt-8 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-4 text-left">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-2xl flex-shrink-0">
-                        ⏳
+                    <div className="icon-tile">
+                        <Icon name="clock" />
                     </div>
                     <div>
-                        <h4 className="font-bold text-white text-base">¿No encontrás un turno o día conveniente?</h4>
-                        <p className="text-slate-400 text-sm">Sumate a la lista de espera y te avisaremos por email cuando se libere un lugar.</p>
+                        <h4 className="font-semibold text-ink text-base">¿No encontrás un turno o día conveniente?</h4>
+                        <p className="text-secondary text-sm">Sumate a la lista de espera y te avisaremos por email cuando se libere un lugar.</p>
                     </div>
                 </div>
                 <Link
                     href={`/reservar/${business_id}/waitlist`}
-                    className="w-full md:w-auto px-6 py-3.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-center transition-all shadow-lg shadow-purple-900/20 hover:shadow-purple-900/40 whitespace-nowrap active:scale-95"
+                    className="w-full md:w-auto px-6 py-3.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-xl text-center transition-all shadow-card whitespace-nowrap"
                 >
-                    Anotarme en Lista de Espera 📋
+                    Anotarme en Lista de Espera <Icon name="list" />
                 </Link>
             </div>
         </div>

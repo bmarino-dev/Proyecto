@@ -1,52 +1,18 @@
-import Link from "next/link"; // ← Importante: el portal de Next.js
+import Link from "next/link";
+import Hero from "./components/Hero";
+import { BrandMark, Icon } from "./components/Visuals";
 
 export default function Home() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] text-center px-4">
-      {/* Sección Hero */}
-      <h1 className="text-5xl md:text-6xl font-extrabold text-white mb-6">
-        Gestioná tus turnos <br />
-        <span className="text-blue-500">sin complicaciones.</span>
-      </h1>
-
-      <p className="text-xl text-slate-400 max-w-2xl mb-10">
-        La plataforma ideal para profesionales que buscan automatizar su agenda y
-        ofrecer una mejor experiencia a sus pacientes.
-      </p>
-
-      {/* Botones de Acción */}
-      <div className="flex gap-4">
-        <Link
-          href="/demo"
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full transition-all"
-        >
-          Ver Demo Pública
-        </Link>
-
-        <Link
-          href="/login"
-          className="bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-8 rounded-full border border-slate-700 transition-all"
-        >
-          Inicia Sesión
-        </Link>
-      </div>
-
-      {/* Un pequeño detalle decorativo */}
-      <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8 text-left max-w-5xl">
-        <div className="p-6 bg-slate-800/50 rounded-2xl border border-slate-700">
-          <h3 className="text-blue-400 font-bold mb-2">🚀 Rápido</h3>
-          <p className="text-slate-400 text-sm">Reservas en menos de 30 segundos para tus pacientes.</p>
+    <div className="landing-page">
+      <Hero />
+      <section className="home-features" aria-label="Funciones de ReservaFácil">
+        <div className="section-intro"><span className="eyebrow">MENOS GESTIÓN, MÁS PRESENCIA</span><h2>Tu consultorio.<br /><em>Un poco más simple.</em></h2><p>Desde la primera reserva hasta tu organización semanal, todo tiene su lugar.</p></div>
+        <div className="feature-grid">
+          {[{ icon: "calendar", title: "Una reserva simple", text: "Tus pacientes eligen un día y un horario disponible desde tu agenda pública." }, { icon: "leaf", title: "Una semana a tu medida", text: "Definí tus horarios de atención y organizá tus días de ausencia desde el panel." }, { icon: "list", title: "Un lugar para esperar", text: "La lista de espera conecta a tus pacientes con los turnos que se liberan." }].map((item, index) => <article className="feature-card" key={item.title}><div className="feature-top"><span className="icon-tile"><Icon name={item.icon} /></span><span className="feature-index">0{index + 1}</span></div><h3>{item.title}</h3><p>{item.text}</p></article>)}
         </div>
-        <div className="p-6 bg-slate-800/50 rounded-2xl border border-slate-700">
-          <h3 className="text-blue-400 font-bold mb-2">🤖 Automático</h3>
-          <p className="text-slate-400 text-sm">Generación de slots y lista de espera inteligente.</p>
-        </div>
-        <div className="p-6 bg-slate-800/50 rounded-2xl border border-slate-700">
-          <h3 className="text-blue-400 font-bold mb-2">📧 Notificaciones</h3>
-          <p className="text-slate-400 text-sm">Emails automáticos de confirmación y cancelación.</p>
-        </div>
-      </div>
+      </section>
+      <footer className="site-footer"><Link href="/" className="brand-link"><BrandMark /><span>ReservaFácil</span></Link><p>Cuidá tu tiempo. Acompañá mejor.</p><Link href="/login">Acceso profesional <Icon name="arrow" /></Link></footer>
     </div>
   );
 }
-

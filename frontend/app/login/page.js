@@ -1,6 +1,7 @@
 'use client'
 
 import Link from "next/link";
+import { AuthAside } from "@/app/components/Visuals";
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -61,48 +62,49 @@ export default function Login({ params }) {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6">
-            <div className="w-full max-w-md bg-slate-900 border border-slate-800 p-10 rounded-3xl shadow-2xl">
+        <div className="auth-layout login-layout">
+            <AuthAside />
+            <div className="auth-card">
                 <div className="text-center mb-10">
-                    <h1 className="text-4xl font-bold text-white mb-2">Bienvenido</h1>
-                    <p className="text-slate-400">Ingresá a tu panel de profesional</p>
+                    <h1 className="text-4xl font-semibold text-ink mb-2">Bienvenido</h1>
+                    <p className="text-secondary">Ingresá a tu panel de profesional</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-2">Usuario</label>
-                        <input
+                        <label htmlFor="field-username" className="block text-sm font-medium text-secondary mb-2">Usuario</label>
+                        <input id="field-username"
                             type="text"
                             name="username"
                             required
                             onChange={handleInput}
-                            className="w-full bg-slate-950 border border-slate-700 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-blue-500 transition-all"
+                            className="w-full bg-canvas border border-line rounded-2xl px-5 py-4 text-ink focus:outline-none focus:border-brand/20 transition-all form-control"
                             placeholder="tu_usuario"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-2">Contraseña</label>
-                        <input
+                        <label htmlFor="field-password" className="block text-sm font-medium text-secondary mb-2">Contraseña</label>
+                        <input id="field-password"
                             type="password"
                             name="password"
                             required
                             onChange={handleInput}
-                            className="w-full bg-slate-950 border border-slate-700 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-blue-500 transition-all"
+                            className="w-full bg-canvas border border-line rounded-2xl px-5 py-4 text-ink focus:outline-none focus:border-brand/20 transition-all form-control"
                             placeholder="••••••••"
                         />
                     </div>
 
                     {estado === 'error' && (
-                        <div className="bg-red-900/20 border border-red-500/50 p-4 rounded-2xl">
-                            <p className="text-red-400 text-sm text-center">Usuario o contraseña incorrectos.</p>
+                        <div className="bg-danger-soft border border-danger/20 p-4 rounded-2xl">
+                            <p className="text-danger text-sm text-center">Usuario o contraseña incorrectos.</p>
                         </div>
                     )}
 
                     <button
                         type="submit"
                         disabled={estado === 'enviando'}
-                        className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-blue-900/20"
+                        className="w-full bg-brand hover:bg-brand-dark disabled:bg-brand/50 text-white font-semibold py-4 rounded-2xl transition-all shadow-card"
                     >
                         {estado === 'enviando' ? (
                             <span className="flex items-center justify-center gap-2">
@@ -115,9 +117,9 @@ export default function Login({ params }) {
                 <div className="mt-8 text-center">
                     <Link
                         href="/signup"
-                        className="text-slate-400 hover:text-blue-400 transition-all text-sm"
+                        className="text-secondary hover:text-brand transition-all text-sm"
                     >
-                        ¿No tienes una cuenta? <span className="font-bold">Registrate</span>
+                        ¿No tenés una cuenta? <span className="font-semibold">Registrate</span>
                     </Link>
                 </div>
             </div>
