@@ -24,8 +24,10 @@ class Command(BaseCommand):
                 slot__start_datetime__gt=ahora
             ).exists()
             if tiene_reserva_cercana:
-                espera.status = "expired"
-                espera.save()
+                WaitlistEntry.objects.filter(
+                    pk=espera.pk,
+                    status="waiting",
+                ).update(status="expired")
             
         
         # PARTE 1: LIMPIEZA DE OFERTAS EXPIRADAS
@@ -35,17 +37,28 @@ class Command(BaseCommand):
         for oferta_vencida in ofertas_vencidas:
             slot_liberado = oferta_vencida.offered_slot
 
-            # Marcamos su oferta como vencida
-            oferta_vencida.status = "expired"
-            oferta_vencida.save()
+            actualizadas = WaitlistEntry.objects.filter(
+                pk=oferta_vencida.pk,
+                status="offered",
+                offered_slot_id=oferta_vencida.offered_slot_id,
+                offer_expires_at__lte=timezone.now(),
+            ).update(status="expired")
 
-            self.stdout.write(self.style.WARNING(f"Oferta expirada para {oferta_vencida.first_name}."))
+            if not actualizadas:
+                continue
 
-            # Intentamos dárselo a la siguiente persona que esté esperando
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Oferta expirada para {oferta_vencida.first_name}."
+                )
+            )
+
+            if slot_liberado is None:
+                continue
+
             margen_minimo = timedelta(hours=2)
-            vale_la_pena = slot_liberado.start_datetime > (ahora + margen_minimo)
-            
-            if vale_la_pena:
+
+            if slot_liberado.start_datetime > timezone.now() + margen_minimo:
                 offer_slot_to_waitlist(slot_liberado)
             
         # PARTE 2: BÚSQUEDA PROACTIVA DE TURNOS LIBRES

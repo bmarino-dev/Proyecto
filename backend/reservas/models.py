@@ -295,6 +295,16 @@ class Reservation(models.Model):
 
     class Meta:
         ordering = ["slot__start_datetime"]
+        # Un slot solo puede tener una reserva confirmada
+        constraints = [
+            models.UniqueConstraint(
+                fields=["slot"],
+                condition=models.Q(status="confirmed"),
+                name="unique_confirmed_reservation_per_slot",
+                violation_error_code="confirmed_slot_conflict",
+                violation_error_message="El turno ya tiene una reserva confirmada.",
+            )
+        ]
 
     def __str__(self):
         return f"{self.reservation_firstname} {self.reservation_lastname} - {self.slot.start_datetime.isoformat()}"

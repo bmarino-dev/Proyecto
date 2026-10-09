@@ -158,11 +158,17 @@ npm run lint
 npm run build
 ```
 
-En la revisión del 9 de octubre de 2026 pasaron los 5 tests del backend. Cubren registro, generación básica, JWT, rechazo de turnos pasados y reservas repetidas secuencialmente. El test llamado de concurrencia realiza pedidos secuenciales sobre SQLite: no valida solicitudes simultáneas ni bloqueos en PostgreSQL. Lint fue interrumpido sin resultados; no se verificaron build, arranque completo en Docker ni flujo completo en navegador.
+La suite del backend incluye pruebas funcionales y de concurrencia. Por defecto usa SQLite y omite los escenarios que requieren bloqueos reales. Para ejecutar toda la suite sobre una base de pruebas separada en PostgreSQL, desde la raíz:
+
+```powershell
+docker compose exec -e TEST_USE_POSTGRES=1 web python manage.py test reservas --noinput
+```
+
+Al completar el caso 9 pasaron 32 tests en PostgreSQL, incluidos ocho escenarios simultáneos. En SQLite pasan 24 y se omiten los ocho de concurrencia. Las pruebas simultáneas cubren reservas públicas y manuales sobre el mismo turno, aceptación doble de ofertas, asignación concurrente de ofertas y cancelaciones. Los correos de prueba se guardan en memoria. La prueba secuencial anterior sigue existiendo con un nombre que distingue su alcance. Estas pruebas no validan todo el flujo del frontend.
 
 ## Limitaciones conocidas
 
-1. **Consistencia:** solo la reserva pública bloquea el turno con `select_for_update`. La reserva manual, las ofertas y el reclamo no comparten esa protección; falta una restricción de una reserva confirmada por turno.
+1. **Consistencia de reservas corregida:** reservas públicas y manuales, ofertas, reclamos y cancelaciones usan transacciones y bloqueos. Una restricción impide más de una reserva confirmada por turno, conservando las canceladas. Los conflictos conocidos devuelven errores entendibles; los correos y las nuevas ofertas se ejecutan después de confirmar la transacción. La entrega de correos sigue sin tener una cola de reintentos persistente.
 2. **Disponibilidad:** crear ausencias no retira turnos existentes. Cambiar o desactivar plantillas no sincroniza sus turnos anteriores, y el listado público no filtra por plantilla activa.
 3. **Historial:** borrar pacientes o plantillas puede eliminar reservas por cascada.
 4. **Correos:** se usa consola. La cancelación de la reserva apunta al puerto `8000`; los recordatorios apuntan a una ruta inexistente del frontend y acceden a `slot.business`, atributo inexistente.

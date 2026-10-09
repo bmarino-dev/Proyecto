@@ -105,8 +105,8 @@ WSGI_APPLICATION = 'mi_proyecto.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# Si estamos en un test, usamos SQLite. Si no, PostgreSQL.
-if 'test' in sys.argv:
+# Los tests usan SQLite por defecto; TEST_USE_POSTGRES=1 permite probar bloqueos.
+if 'test' in sys.argv and not config('TEST_USE_POSTGRES', default=False, cast=bool):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',

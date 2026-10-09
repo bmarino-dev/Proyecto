@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from .models import Business, Patient, ResourceTemplate, ResourceSlot, Reservation, BlackOutDates, WaitlistEntry
 from .utils import generate_slots_for_template
+from .reservation_transactions import reservation_transaction
 import re
 from django.core.mail import send_mail
 
@@ -242,12 +243,43 @@ class ReservationCreateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        patient = validated_data['patient']
-        # Tomamos los datos actuales del paciente para el snapshot
-        validated_data['reservation_firstname'] = patient.first_name
-        validated_data['reservation_lastname'] = patient.last_name
-        validated_data['reservation_phone'] = patient.phone
-        return super().create(validated_data)
+        slot = validated_data.pop("slot")
+        patient = validated_data["patient"]
+
+        validated_data.pop("slot_id", None)
+        validated_data.pop("patient_id", None)
+
+        with reservation_transaction():
+            try:
+                locked_slot = (
+                    ResourceSlot.objects
+                    .select_for_update(of=("self",))
+                    .get(
+                        pk=slot.pk,
+                        template__business=self.context["request"].user.business_profile,
+                    )
+                )
+            except ResourceSlot.DoesNotExist:
+                raise serializers.ValidationError({
+                    "slot_id": "El turno ya no existe o no te pertenece."
+                })
+
+            if locked_slot.start_datetime <= timezone.now():
+                raise serializers.ValidationError({
+                    "slot_id": "No se puede reservar un turno en el pasado."
+                })
+
+            if not locked_slot.is_available:
+                raise serializers.ValidationError({
+                    "slot_id": "Este turno ya no está disponible."
+                })
+
+            validated_data["slot"] = locked_slot
+            validated_data["reservation_firstname"] = patient.first_name
+            validated_data["reservation_lastname"] = patient.last_name
+            validated_data["reservation_phone"] = patient.phone
+
+            return super().create(validated_data)
 
 
 
@@ -298,15 +330,29 @@ class ReservationPublicSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         slot = validated_data.pop("slot")
+        validated_data.pop("slot_id", None)
 
-        #utilizamos transaction.atomic para asegurar que la reserva se cree correctamente
-        #y evitar condiciones de carrera
-        with transaction.atomic():
-            locked_slot = ResourceSlot.objects.select_for_update().get(id=slot.id)
+        with reservation_transaction():
+            try:
+                locked_slot = (
+                    ResourceSlot.objects
+                    .select_for_update(of=("self",))
+                    .get(pk=slot.pk)
+                )
+            except ResourceSlot.DoesNotExist:
+                raise serializers.ValidationError({
+                    "slot_id": "El turno ya no existe."
+                })
+
+            if locked_slot.start_datetime <= timezone.now():
+                raise serializers.ValidationError({
+                    "slot_id": "No se puede reservar un turno en el pasado."
+                })
 
             if not locked_slot.is_available:
-                raise serializers.ValidationError({"slot_id" : "¡Este turno acaba de ser reservado por otro cliente!"})
-            
+                raise serializers.ValidationError({
+                    "slot_id": "Este turno ya no está disponible."
+                })
 
             business = locked_slot.template.business
 
@@ -336,7 +382,7 @@ class ReservationPublicSerializer(serializers.ModelSerializer):
                     patient.phone = phone
                 patient.save()
             
-            reservation = Reservation.objects.create(reservation_firstname=first_name,  reservation_lastname=last_name, reservation_phone=phone, slot=slot, patient=patient, status="confirmed", **validated_data)
+            reservation = Reservation.objects.create(reservation_firstname=first_name,  reservation_lastname=last_name, reservation_phone=phone, slot=locked_slot, patient=patient, status="confirmed", **validated_data)
 
             #Generar URL de confirmación
             confirm_url = f"http://localhost:8001/confirm/{reservation.confirmation_token}/"
@@ -348,13 +394,16 @@ class ReservationPublicSerializer(serializers.ModelSerializer):
             ¡Tu turno ha sido confirmado con éxito! Si por alguna razón no puedes asistir, por favor cancela tu turno haciendo clic en este único enlace:
             {confirm_url}?cancel=1
             """
-            #Enviar email de confirmación
-            send_mail(
-                "Confirmar reserva",
-                mensaje,
-                "[EMAIL_ADDRESS]",
-                [email],
-                fail_silently=False,
+            # El correo solo sale si la reserva se confirmó en la base.
+            transaction.on_commit(
+                lambda: send_mail(
+                    "Confirmar reserva",
+                    mensaje,
+                    "[EMAIL_ADDRESS]",
+                    [email],
+                    fail_silently=False,
+                ),
+                robust=True,
             )
             
             return reservation

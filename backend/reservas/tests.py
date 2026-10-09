@@ -5,7 +5,6 @@ from rest_framework.test import APIClient
 from django.urls import reverse
 from .models import User, Business, Patient, ResourceTemplate, ResourceSlot, Reservation
 from .utils import generate_slots_for_template
-import concurrent.futures
 
 
 class ReservationMVPTests(TestCase):
@@ -207,7 +206,7 @@ class HistoryDeletionTests(TestCase):
                 self.assertTrue(type(instance).objects.filter(pk=instance.pk).exists())
 
 
-class ReservationConcurrencyTests(TransactionTestCase):
+class ReservationSequentialTests(TransactionTestCase):
     # Usamos TransactionTestCase para que cada test tenga su propia transacción y no interfiera con otros tests.
 
     # Indicamos que queremos usar la base de datos por defecto.
@@ -232,7 +231,7 @@ class ReservationConcurrencyTests(TransactionTestCase):
         #Generamos un unico slot para mañana
         self.slot = ResourceSlot.objects.create(template=self.template, date=timezone.localdate() + timedelta(days = 1), start_datetime = timezone.now() + timedelta(days = 1))
 
-    def test_evitar_doble_reserva_concurrente(self):
+    def test_evitar_doble_reserva_secuencial(self):
         from django.urls import reverse
         url = reverse('public-reservation-create')
             

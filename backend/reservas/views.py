@@ -30,6 +30,7 @@ from datetime import timedelta
 from django.db import transaction
 from django.db.models.deletion import ProtectedError
 from .utils import offer_slot_to_waitlist, _is_blackout
+from .reservation_transactions import reservation_transaction
 
 User = get_user_model()
 
@@ -78,7 +79,7 @@ class BusinessPasswordResetView(generics.GenericAPIView):
         #buscamos el usuario y mandamos el mail
         try:
             user = User.objects.get(email=email)
-            
+
             #transformamos el id en string seguro para url
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
 
@@ -86,14 +87,14 @@ class BusinessPasswordResetView(generics.GenericAPIView):
             token = default_token_generator.make_token(user)
 
             reset_url = f"http://localhost:3000/reset-password/{uidb64}/{token}/"
-            
+
             mensaje = f"""
             Hola {user.first_name},
             Has solicitado restablecer tu contraseña.
             Haz clic en el siguiente enlace para crear una nueva:
             {reset_url}
             """
-            
+
             send_mail(
                 "Restablecer contraseña",
                 mensaje,
@@ -101,7 +102,7 @@ class BusinessPasswordResetView(generics.GenericAPIView):
                 [email],
                 fail_silently=False,
             )
-            
+
         except User.DoesNotExist:
             pass
 
@@ -121,7 +122,7 @@ class PasswordResetConfirmView(generics.GenericAPIView):
             token = serializer.validated_data['token']
             new_password = serializer.validated_data['new_password']
             uid = urlsafe_base64_decode(uid).decode()
-            
+
             user = User.objects.get(pk=uid)
             if not default_token_generator.check_token(user, token):
                 return Response({"detail": "Token inválido o expirado."},
@@ -255,12 +256,23 @@ class ReservationCancelView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    @reservation_transaction()
     def patch(self, request, pk):
         reservation = get_object_or_404(
             Reservation,
             id=pk,
             slot__template__business=request.user.business_profile
         )
+        locked_slot = get_object_or_404(
+            ResourceSlot.objects.select_for_update(of=("self",)),
+            pk=reservation.slot_id,
+        )
+        reservation = get_object_or_404(
+            Reservation.objects.select_for_update(of=("self",)),
+            pk=pk,
+            slot__template__business=request.user.business_profile,
+        )
+        reservation.slot = locked_slot
 
         if reservation.status == "cancelled":
             return Response(
@@ -271,14 +283,16 @@ class ReservationCancelView(APIView):
         reservation.status = "cancelled"
         reservation.save(update_fields=["status"])
 
-        #buscamos el paciente mas antiguo en la waitlist y le ofrecemos slot
-        offer_slot_to_waitlist(reservation.slot)
+        transaction.on_commit(
+            lambda: offer_slot_to_waitlist(locked_slot),
+            robust=True,
+        )
 
         return Response({"detail": "Reserva cancelada correctamente."})
 
 
-        
-        
+
+
 
 
 
@@ -330,8 +344,18 @@ class ReservationConfirmView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
 
+    @reservation_transaction()
     def get(self, request, token):
         reservation = get_object_or_404(Reservation, confirmation_token=token)
+        locked_slot = get_object_or_404(
+            ResourceSlot.objects.select_for_update(of=("self",)),
+            pk=reservation.slot_id,
+        )
+        reservation = get_object_or_404(
+            Reservation.objects.select_for_update(of=("self",)),
+            confirmation_token=token,
+        )
+        reservation.slot = locked_slot
 
         if reservation.status == "cancelled":
             return Response(
@@ -351,9 +375,11 @@ class ReservationConfirmView(APIView):
             reservation.status = "cancelled"
             reservation.save(update_fields=["status"])
 
-            #buscamos el paciente mas antiguo en la waitlist y le ofrecemos slot
-            offer_slot_to_waitlist(reservation.slot)
-                
+            transaction.on_commit(
+                lambda: offer_slot_to_waitlist(locked_slot),
+                robust=True,
+            )
+
             return Response({"detail": "Turno cancelado exitosamente. Gracias por avisar."})
 
 
@@ -372,18 +398,19 @@ class WaitlistCreateView(generics.CreateAPIView):
 class WaitlistClaimView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
-    
+
     def get(self, request, waitlist_id):
         cliente_lista = get_object_or_404(WaitlistEntry, id=waitlist_id)
-        
+
         if cliente_lista.status != "offered" or not cliente_lista.offered_slot:
             return Response({"detail": "No tienes una oferta de turno activa"}, status=status.HTTP_400_BAD_REQUEST)
-            
-        if timezone.now() > cliente_lista.offer_expires_at:
-            cliente_lista.status = "expired"
-            cliente_lista.save()
+
+        if (
+            cliente_lista.offer_expires_at is None
+            or cliente_lista.offer_expires_at <= timezone.now()
+        ):
             return Response({"detail": "El tiempo de confirmación expiró"}, status=status.HTTP_400_BAD_REQUEST)
-            
+
         return Response({
             "id": cliente_lista.id,
             "first_name": cliente_lista.first_name,
@@ -404,18 +431,48 @@ class WaitlistClaimView(APIView):
             }
         })
 
+    @reservation_transaction()
     def post(self, request, waitlist_id):
-        
-        cliente_lista = get_object_or_404(WaitlistEntry, id=waitlist_id)
-        #si no fue ofertado, error
+        oferta_inicial = get_object_or_404(
+            WaitlistEntry,
+            id=waitlist_id,
+        )
+
+        if not oferta_inicial.offered_slot_id:
+            return Response(
+                {"detail": "No tenés una oferta de turno activa."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        locked_slot = get_object_or_404(
+            ResourceSlot.objects.select_for_update(of=("self",)),
+            pk=oferta_inicial.offered_slot_id,
+        )
+
+        cliente_lista = get_object_or_404(
+            WaitlistEntry.objects.select_for_update(of=("self",)),
+            id=waitlist_id,
+        )
+
+        if cliente_lista.offered_slot_id != locked_slot.pk:
+            return Response(
+                {"detail": "La oferta cambió. Volvé a consultar el turno."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        cliente_lista.offered_slot = locked_slot
+
         if cliente_lista.status != "offered" or not cliente_lista.offered_slot:
             return Response({"detail": "No tienes una oferta de turno activa"}, status=status.HTTP_400_BAD_REQUEST)
-        #si ya expiró
-        if timezone.now() > cliente_lista.offer_expires_at:
+
+        if (
+            cliente_lista.offer_expires_at is None
+            or cliente_lista.offer_expires_at <= timezone.now()
+        ):
             cliente_lista.status = "expired"
-            cliente_lista.save()
+            cliente_lista.save(update_fields=["status"])
             return Response({"detail": "El tiempo de confirmación expiró"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         if _is_blackout(
             cliente_lista.business,
             cliente_lista.offered_slot.date,
@@ -425,6 +482,38 @@ class WaitlistClaimView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if (
+            locked_slot.template.business_id != cliente_lista.business_id
+            or not locked_slot.active
+            or locked_slot.start_datetime <= timezone.now()
+        ):
+            return Response(
+                {"detail": "El turno ofrecido ya no está disponible."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        tiene_reserva = Reservation.objects.filter(
+            slot=locked_slot,
+            status="confirmed",
+        ).exists()
+
+        tiene_otra_oferta = (
+            WaitlistEntry.objects
+            .filter(
+                offered_slot=locked_slot,
+                status="offered",
+                offer_expires_at__gt=timezone.now(),
+            )
+            .exclude(pk=cliente_lista.pk)
+            .exists()
+        )
+
+        if tiene_reserva or tiene_otra_oferta:
+            return Response(
+                {"detail": "El turno ya está reservado u ofrecido a otra persona."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
         #si pasa los filtros, geteamos o creamos al paciente y lo agendamos
         nuevo_paciente, created = Patient.objects.get_or_create(email=cliente_lista.email, business=cliente_lista.business, defaults={
         'first_name': cliente_lista.first_name,
@@ -432,22 +521,37 @@ class WaitlistClaimView(APIView):
         'phone': cliente_lista.phone
         })
 
-        reservas_antiguas = Reservation.objects.filter(slot__template__business=cliente_lista.business, patient=nuevo_paciente, status="confirmed", slot__start_datetime__gt=timezone.now())
-        with transaction.atomic():
-        
-            for reserva_antigua in reservas_antiguas:
-                reserva_antigua.status = "cancelled"
-                reserva_antigua.save()
-                
-                #buscamos el paciente mas antiguo en la waitlist y le ofrecemos slot
-                offer_slot_to_waitlist(reserva_antigua.slot)
-            
+        nuevo_paciente = (
+            Patient.objects
+            .select_for_update(of=("self",))
+            .get(pk=nuevo_paciente.pk)
+        )
 
-            #creamos la reserva
-            Reservation.objects.create(reservation_firstname=nuevo_paciente.first_name,
-            reservation_lastname=nuevo_paciente.last_name, slot=cliente_lista.offered_slot,patient=nuevo_paciente, status="confirmed")
+        reservas_antiguas = Reservation.objects.filter(
+            slot__template__business=cliente_lista.business,
+            patient=nuevo_paciente,
+            status="confirmed",
+            slot__start_datetime__gt=timezone.now(),
+        ).order_by("slot_id", "id")
 
-            cliente_lista.status = "booked"
-            cliente_lista.save()
+        for reserva_antigua in reservas_antiguas:
+            reserva_antigua.status = "cancelled"
+            reserva_antigua.save(update_fields=["status"])
+            # Ofrecemos el turno liberado cuando el reclamo se confirme.
+            transaction.on_commit(
+                lambda slot=reserva_antigua.slot: offer_slot_to_waitlist(slot),
+                robust=True,
+            )
 
-            return Response({"detail": "Reserva agendada exitosamente!"})
+        Reservation.objects.create(
+            reservation_firstname=nuevo_paciente.first_name,
+            reservation_lastname=nuevo_paciente.last_name,
+            reservation_phone=nuevo_paciente.phone,
+            slot=locked_slot,
+            patient=nuevo_paciente,
+            status="confirmed",
+        )
+        cliente_lista.status = "booked"
+        cliente_lista.save(update_fields=["status"])
+
+        return Response({"detail": "Reserva agendada exitosamente!"})
