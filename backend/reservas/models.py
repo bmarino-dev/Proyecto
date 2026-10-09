@@ -197,7 +197,7 @@ class ResourceSlot(models.Model):
             raise ValidationError("end_datetime debe ser posterior a start_datetime.")
 
     def save(self, *args, **kwargs):
-        if self.template and self.start_datetime:
+        if self._state.adding and not self.end_datetime:
             self.end_datetime = self.start_datetime + self.template.duration
         super().save(*args, **kwargs)
 
@@ -205,7 +205,23 @@ class ResourceSlot(models.Model):
         return f"{self.template.business} - {self.template.name} - {self.start_datetime.isoformat()}"
 
     @property
+    def has_commitment(self):
+        has_reservation = self.reservation.filter(
+            status="confirmed",
+        ).exists()
+
+        has_offer = self.waitlistentry_set.filter(
+            status="offered",
+            offer_expires_at__gt=timezone.now(),
+    ).exists()
+
+        return has_reservation or has_offer
+    
+    @property
     def is_available(self):
+
+        if not self.template.active:
+            return False
         if not self.active:
             return False
         
@@ -219,6 +235,9 @@ class ResourceSlot(models.Model):
         for wl in self.waitlistentry_set.all():
             if wl.status == "offered" and wl.offer_expires_at and wl.offer_expires_at > now:
                 return False
+        from .utils import _is_blackout
+        if _is_blackout(self.template.business, self.date):
+            return False
                 
         return True
             

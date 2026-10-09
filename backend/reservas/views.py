@@ -28,7 +28,7 @@ from django.contrib.auth import get_user_model
 from django.utils.http import urlsafe_base64_decode
 from datetime import timedelta
 from django.db import transaction
-from .utils import offer_slot_to_waitlist
+from .utils import offer_slot_to_waitlist, _is_blackout
 
 User = get_user_model()
 
@@ -397,6 +397,15 @@ class WaitlistClaimView(APIView):
             cliente_lista.save()
             return Response({"detail": "El tiempo de confirmación expiró"}, status=status.HTTP_400_BAD_REQUEST)
         
+        if _is_blackout(
+            cliente_lista.business,
+            cliente_lista.offered_slot.date,
+        ):
+            return Response(
+                {"detail": "El profesional no tiene disponibilidad para esta fecha."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         #si pasa los filtros, geteamos o creamos al paciente y lo agendamos
         nuevo_paciente, created = Patient.objects.get_or_create(email=cliente_lista.email, business=cliente_lista.business, defaults={
         'first_name': cliente_lista.first_name,

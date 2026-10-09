@@ -28,6 +28,10 @@ def _combine_aware(dt_date: ddate, dt_time: dtime):
 # Genera ResourceSlot a partir del template para los próximos días.
 def generate_slots_for_template(template, days: int=DEFAULT_GENERATE_DAYS):
     
+    # No generar turnos si la plantilla está desactivada.
+    if not template.active:
+        return 0
+    
     business = template.business
     today = timezone.localdate()
     start_date = template.start_date or today
@@ -59,13 +63,60 @@ def generate_slots_for_template(template, days: int=DEFAULT_GENERATE_DAYS):
                 while (datetime.combine(curr, slot_start_time) + slot_duration).time() <= end_time:
                     start_dt = _combine_aware(curr, slot_start_time)
 
-                    #si ya existe un slot con ese template + date + start_duration lo saltamos
-                    exists = ResourceSlot.objects.filter(template=template, date=curr, start_datetime = start_dt).exists()
-                    if not exists:
-                        rs = ResourceSlot(template=template, date=curr,start_datetime=start_dt)
-                        slots_to_create.append(rs)
-                    #avanzar por duracion
+                    end_dt = start_dt + slot_duration
+
+                    existing_slot = ResourceSlot.objects.filter(
+                        template=template,
+                        date=curr,
+                        start_datetime=start_dt,
+                    ).first()
+
+                    overlapping_slots = ResourceSlot.objects.filter(
+                        template__business=business,
+                        start_datetime__lt=end_dt,
+                        end_datetime__gt=start_dt,
+                    ).select_related("template")
+
+                    if existing_slot:
+                        overlapping_slots = overlapping_slots.exclude(
+                            pk=existing_slot.pk,
+                        )
                     
+                    has_overlap = any(
+                        slot.has_commitment
+                        or (slot.active and slot.template.active)
+                        for slot in overlapping_slots
+                    )
+                    if not has_overlap:
+                        if existing_slot:
+                            can_adjust_duration = (
+                                not existing_slot.reservation.exists()
+                                and not existing_slot.waitlistentry_set.exists()
+                            )
+                            if (
+                                start_dt > timezone.now()
+                                and not existing_slot.has_commitment
+                                and (
+                                    existing_slot.end_datetime == end_dt
+                                    or can_adjust_duration
+                                )
+                            ):
+                                ResourceSlot.objects.filter(
+                                    pk=existing_slot.pk,
+                                ).update(
+                                    active=True,
+                                    end_datetime=end_dt,
+                                )
+                        else:
+                            rs = ResourceSlot(
+                                template=template,
+                                date=curr,
+                                start_datetime=start_dt,
+                                end_datetime=end_dt,
+                            )
+                            slots_to_create.append(rs)
+                    
+                    #avanzar por duracion
                     naive_dt = datetime.combine(curr, slot_start_time) + slot_duration
                     slot_start_time = naive_dt.time()
                     
@@ -89,6 +140,12 @@ def offer_slot_to_waitlist(slot):
     Busca al paciente más antiguo en la lista de espera del negocio 
     y le ofrece el slot recién liberado por un tiempo limitado (2hs).
     """
+
+    if _is_blackout(slot.template.business, slot.date):
+        return
+
+    if not slot.template.active:
+        return
     # 1. Guardamos el slot que se liberó
     slot_liberado = slot
     
@@ -103,6 +160,7 @@ def offer_slot_to_waitlist(slot):
     for paciente in pacientes:
         # Buscamos si el paciente ya tiene una reserva confirmada con este mismo profesional
         reserva_actual = Reservation.objects.filter(
+            slot__start_datetime__gt=timezone.now(),
             patient__email=paciente.email, 
             slot__template__business=slot.template.business, 
             status="confirmed"

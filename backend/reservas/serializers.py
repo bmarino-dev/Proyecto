@@ -131,11 +131,43 @@ class ResourceTemplateSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
-        instance = super().update(instance, validated_data)
+        # 1. Campos que definen el horario y calendario de la plantilla
+        schedule_fields = (
+            "weekday",
+            "start_time",
+            "end_time",
+            "duration",
+            "start_date",
+        )
         
-        # Si la plantilla está activa, regeneramos/actualizamos slots
-        if instance.active:
-            generate_slots_for_template(instance)
+        # 2. Verificar si alguno de los campos de horario fue modificado
+        schedule_changed = any(
+            field in validated_data
+            and validated_data[field] != getattr(instance, field)
+            for field in schedule_fields
+        )
+
+        # 3. Operación atómica para asegurar la consistencia de los datos
+        with transaction.atomic():
+            # 4. Si el horario cambió, desactivar slots futuros no comprometidos
+            if schedule_changed:
+                future_slots = instance.slots.filter(
+                    start_datetime__gt=timezone.now(),
+                )
+
+                for slot in future_slots:
+                    # Se protegen los turnos con reservas confirmadas u ofertas activas
+                    if not slot.has_commitment:
+                        ResourceSlot.objects.filter(pk=slot.pk).update(
+                            active=False,
+                        )
+
+            # 5. Actualizar los datos de la plantilla
+            instance = super().update(instance, validated_data)
+        
+            # 6. Si la plantilla está activa, regeneramos/actualizamos slots según la nueva configuración
+            if instance.active:
+                generate_slots_for_template(instance)
             
         return instance
 
@@ -307,7 +339,7 @@ class ReservationPublicSerializer(serializers.ModelSerializer):
             reservation = Reservation.objects.create(reservation_firstname=first_name,  reservation_lastname=last_name, reservation_phone=phone, slot=slot, patient=patient, status="confirmed", **validated_data)
 
             #Generar URL de confirmación
-            confirm_url = f"http://localhost:8000/confirm/{reservation.confirmation_token}/"
+            confirm_url = f"http://localhost:8001/confirm/{reservation.confirmation_token}/"
 
             #Crear mensaje de confirmación
             mensaje = f"""

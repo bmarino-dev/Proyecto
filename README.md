@@ -1,86 +1,176 @@
-# API y Plataforma SaaS de Reservas para Profesionales
+# Plataforma de reservas para profesionales
 
-Una plataforma Full-Stack robusta diseñada para que profesionales independientes (psicólogos, nutricionistas, fisioterapeutas, etc.) gestionen sus pacientes, disponibilidades y reservas. 
+MVP para gestionar disponibilidad, pacientes y reservas. La API usa Django REST Framework y el frontend usa Next.js con App Router.
 
-El proyecto consta de un backend potente (Django REST Framework) y un frontend moderno (Next.js con App Router y Tailwind CSS), proveyendo un flujo completo desde la generación automática de slots hasta la reserva y gestión de lista de espera.
+Estado documentado al **9 de octubre de 2026**. Las funciones principales están implementadas, con pendientes de funcionamiento e integridad. No se considera validado para producción.
 
-## 🚀 Características Principales (Features)
+## Mapa para retomar el proyecto
 
-* **Arquitectura Full-Stack Separada**: Backend API-First y un Frontend B2B/B2C independiente consumiendo los endpoints.
-* **Autenticación Segura (JWT)**: Login de profesionales utilizando JSON Web Tokens. El Frontend gestiona el estado y protege las rutas privadas (Dashboard).
-* **Gestión de Pacientes y Dashboard Premium**: Interfaz moderna (Glassmorphism) para que el profesional visualice sus próximos turnos y gestione su clínica.
-* **Generación Automática de Slots**: Configuración de `ResourceTemplates` en el backend para generar automáticamente los turnos reales evadiendo fechas bloqueadas (`BlackOutDates`).
-* **Flujo de Reservas Público (Self-Service)**: Formulario público interactivo donde los pacientes pueden ver disponibilidad y asegurar su turno al instante (las reservas nacen como confirmadas para reducir fricción).
-* **Gestión de Cancelación One-Click**: Los pacientes reciben un link seguro por e-mail para cancelar su turno con un solo clic sin necesidad de registrarse.
-* **Lista de Espera Inteligente (Waitlist FIFO)**: (Próximamente en Frontend) Cuando un turno es cancelado, el sistema automáticamente le ofrece el lugar liberado al primer paciente en la lista de espera, otorgándole un tiempo límite para aceptarlo antes de pasar al siguiente.
-* **Documentación Automática OpenAPI (Swagger)**: Esquema autogenerado para consultar y probar la API.
+| Ubicación | Responsabilidad |
+|---|---|
+| `backend/reservas/models.py` | Entidades, relaciones y disponibilidad |
+| `backend/reservas/serializers.py` | Validación y creación de entidades y reservas |
+| `backend/reservas/views.py` | API privada/pública, cancelación y reclamo de ofertas |
+| `backend/reservas/utils.py` | Generación de turnos y selección de lista de espera |
+| `backend/reservas/management/commands/` | Procesos periódicos y recordatorios |
+| `frontend/app/` | Panel profesional, reserva pública y lista de espera |
+| `.github/workflows/django.yml` | Tests del backend en CI |
 
----
+- [Contexto de arquitectura](backend/CONTEXTO_ARQUITECTURA.md): reglas, decisiones y pendientes técnicos. Está ignorado por Git; puede faltar en un clon nuevo.
+- [README del frontend](frontend/README.md): rutas, sesión y conexión con la API.
+- [Instrucciones del frontend](frontend/AGENTS.md): convenciones para trabajar en esa carpeta.
 
-## 🛠 Entorno de Desarrollo y Requisitos
+## Funciones implementadas
 
-- Python 3.12+
-- Node.js 18+ y npm
-- Docker Desktop (Recomendado)
+- Registro y login de profesionales con JWT.
+- Dashboard que consulta perfil y reservas; interfaces para listar, crear y eliminar horarios y ausencias.
+- API para administrar pacientes, plantillas, ausencias y reservas propias.
+- Generación de turnos desde plantillas semanales, omitiendo ausencias al generar.
+- Reserva pública sin cuenta de paciente; las reservas nacen como `confirmed`.
+- Cancelación pública por token UUID y cancelación privada por API.
+- Inscripción pública en lista de espera y página para consultar y aceptar ofertas de hasta dos horas.
+- Selección de candidatos por antigüedad entre quienes cumplen las condiciones de la oferta.
+- Documentación OpenAPI y Swagger.
 
----
+La API de pacientes y la cancelación privada existen, pero no hay pantalla de gestión de pacientes ni botón de cancelación en el dashboard. Los correos se imprimen en consola con la configuración actual.
 
-## 💻 Instalación y Ejecución Local
+## Tecnologías y requisitos
 
-### Opción A: Todo con Docker (Recomendada)
-El proyecto está 100% "Dockerizado".
-1. Clonar el repositorio.
-2. Ejecutar: `docker-compose up --build`
-3. Backend disponible en `http://localhost:8001` y Frontend en `http://localhost:3000`.
+Versiones declaradas en `backend/requirements.txt` y `frontend/package.json`:
 
-### Opción B: Ejecución Manual
+- Python 3.12 o superior; Docker y CI usan 3.12.
+- Django 6.0.2, DRF 3.16.1 y SimpleJWT 5.5.1.
+- PostgreSQL en ejecución normal; Compose usa PostgreSQL 15.
+- SQLite para `manage.py test`, según la selección en settings.
+- Next.js 16.2.4, React 19.2.4 y Tailwind CSS 4.
+- Node.js 20.9.0 o superior y npm, según el requisito del paquete Next.js instalado.
+- Docker Desktop con Compose para ejecutar base de datos y backend en contenedores.
 
-**1. Backend (Django)**
-```bash
-cd backend
+## Ejecución local: Docker y frontend separado
+
+Compose incluye `db`, `web` y `scheduler`. **No contiene un servicio para el frontend.** El backend usa el servidor de desarrollo de Django.
+
+1. Creá `.env` en la raíz para las variables que interpola Compose:
+
+   ```dotenv
+   DB_NAME=reservas
+   DB_USER=reservas
+   DB_PASSWORD=reemplazar_por_una_clave_local
+   RESEND_API_KEY=
+   ```
+
+2. Creá `backend/.env` para la configuración que lee Django. Compose pasa las variables de base de datos, pero no inyecta `SECRET_KEY`:
+
+   ```dotenv
+   SECRET_KEY=reemplazar_por_una_clave_aleatoria_local
+   DEBUG=True
+   ALLOWED_HOSTS=localhost,127.0.0.1
+   ```
+
+   Usá claves propias. Los archivos `.env` están ignorados por Git; no subir sus valores al repositorio.
+
+3. Desde la raíz, iniciá PostgreSQL:
+
+   ```powershell
+   docker compose up -d db
+   ```
+
+4. Cuando PostgreSQL esté listo, aplicá migraciones e iniciá backend y scheduler:
+
+   ```powershell
+   docker compose run --rm web python manage.py migrate
+   docker compose up --build web scheduler
+   ```
+
+   `depends_on` no comprueba que PostgreSQL acepte conexiones. Compose tampoco aplica migraciones automáticamente.
+
+5. En otra terminal:
+
+   ```powershell
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+Direcciones locales:
+
+- Frontend: <http://localhost:3000>
+- API: <http://localhost:8001>
+- Swagger: <http://localhost:8001/api/docs/>
+
+El frontend tiene `http://localhost:8001` escrito directamente en sus consultas. No consume `NEXT_PUBLIC_API_URL`.
+
+## Backend sin Docker
+
+Necesitás PostgreSQL accesible desde Windows. El servicio `db` de Compose no publica su puerto al host: su configuración actual no permite conectar directamente un backend ejecutado fuera de los contenedores.
+
+Configurá `backend/.env` con `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST` y `DB_PORT`. Para PostgreSQL local usá `DB_HOST=localhost` y el puerto de tu instancia. El valor por defecto `db` corresponde a la red de Compose.
+
+Desde la raíz:
+
+```powershell
 python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements.txt
+.\.venv\Scripts\Activate.ps1
+pip install -r backend/requirements.txt
+cd backend
 python manage.py migrate
 python manage.py runserver 8001
 ```
 
-**2. Frontend (Next.js)**
-En una nueva terminal:
-```bash
-cd frontend
-npm install
-npm run dev
+En otra terminal, con el mismo entorno activado y dentro de `backend`, ejecutá `python manage.py run_scheduler` para iniciar los procesos periódicos.
+
+## API principal
+
+Las rutas están en la raíz del backend, sin prefijo `/api/`, salvo la documentación. Los listados genéricos usan páginas de 20 elementos (`count`, `next`, `previous`, `results`).
+
+| Acceso | Método y ruta | Función |
+|---|---|---|
+| Público | `POST /auth/signup/` | Registrar profesional |
+| Público | `POST /auth/login/` | Obtener tokens de acceso y renovación |
+| Público | `POST /auth/token/refresh/` | Renovar acceso |
+| Público | `POST /auth/password-reset/` y `/auth/password-reset-confirm/` | Recuperación; falta la página de destino en el frontend |
+| Público | `GET /public/business/<uuid>/` | Perfil profesional |
+| Público | `GET /public/slots/?business_id=<uuid>&date=YYYY-MM-DD` | Turnos disponibles; fecha opcional |
+| Público | `POST /public/reservations/` | Reservar turno |
+| Público | `GET /confirm/<token>/?cancel=1` | Cancelar; sin `cancel`, informa que ya está confirmado |
+| Público | `POST /public/business/<uuid>/waitlist/` | Inscribirse en lista de espera |
+| Público | `GET, POST /public/waitlist/<uuid>/claim/` | Consultar o aceptar oferta |
+| JWT | `GET, PATCH, PUT /business/me/` | Consultar o actualizar perfil |
+| JWT | `GET, POST /patients/`, `/templates/`, `/blackouts/` | Listar o crear entidades propias |
+| JWT | `GET, PATCH, PUT, DELETE /patients/<uuid>/`, `/templates/<uuid>/`, `/blackouts/<uuid>/` | Administrar entidad propia |
+| JWT | `GET, POST /reservations/` | Listar o crear reservas |
+| JWT | `PATCH /reservations/<uuid>/cancel/` | Cancelar reserva propia |
+
+## Procesos y verificación
+
+`run_scheduler` programa `process_waitlist` cada 10 minutos y `generate_slots` los domingos a las 03:00. Django está configurado con `America/Montevideo`; los disparadores no especifican zona propia, por lo que falta comprobar el horario efectivo en ejecución. `send_reminders` existe, pero no está programado y requiere correcciones.
+
+Desde `backend`, con el entorno activado:
+
+```powershell
+python manage.py test reservas
 ```
 
----
+Desde `frontend`:
 
-## 🔗 Estructura de Endpoints de la API (Resumen)
+```powershell
+npm run lint
+npm run build
+```
 
-El esquema completo puede consultarse en `http://localhost:8001/api/docs/`.
+En la revisión del 9 de octubre de 2026 pasaron los 5 tests del backend. Cubren registro, generación básica, JWT, rechazo de turnos pasados y reservas repetidas secuencialmente. El test llamado de concurrencia realiza pedidos secuenciales sobre SQLite: no valida solicitudes simultáneas ni bloqueos en PostgreSQL. Lint fue interrumpido sin resultados; no se verificaron build, arranque completo en Docker ni flujo completo en navegador.
 
-### Públicos (B2C)
-* `GET /public/slots/?business_id=...` : Vidriera de turnos libres.
-* `POST /public/reservations/` : Creación de reserva.
-* `GET /confirm/<token>/` : Confirmación/Cancelación por email.
-* `POST /public/business/<uuid>/waitlist/` : Anotarse en lista de espera.
+## Limitaciones conocidas
 
-### Privados (B2B - Requieren JWT)
-* `POST /auth/login/` : Obtención de Token.
-* `GET /reservations/` : Listado de reservas del profesional logueado.
-* `GET, POST /patients/`, `/templates/`, `/blackouts/` : Gestión interna clínica.
+1. **Consistencia:** solo la reserva pública bloquea el turno con `select_for_update`. La reserva manual, las ofertas y el reclamo no comparten esa protección; falta una restricción de una reserva confirmada por turno.
+2. **Disponibilidad:** crear ausencias no retira turnos existentes. Cambiar o desactivar plantillas no sincroniza sus turnos anteriores, y el listado público no filtra por plantilla activa.
+3. **Historial:** borrar pacientes o plantillas puede eliminar reservas por cascada.
+4. **Correos:** se usa consola. La cancelación de la reserva apunta al puerto `8000`; los recordatorios apuntan a una ruta inexistente del frontend y acceden a `slot.business`, atributo inexistente.
+5. **Sesión y configuración:** el frontend guarda solo el acceso JWT en `localStorage`, sin renovación. Las direcciones de API y correo están fijadas a localhost.
+6. **Pruebas:** falta cubrir lista de espera, ausencias, aislamiento entre profesionales y concurrencia real en PostgreSQL.
 
----
+Estos puntos describen errores funcionales y riesgos de integridad observados en el código. La revisión no es una auditoría completa de seguridad ni confirmó acceso no autorizado a datos de otros profesionales.
 
-## 🤖 Sobre este Proyecto y el Uso de IA
+## Desarrollo y aprendizaje
 
-Este proyecto fue desarrollado como un MVP para consolidar conocimientos en desarrollo Full-Stack. Para alcanzar el nivel de robustez actual, he utilizado **inteligencia artificial como herramienta de asistencia y *pair programming***.
-
-Mi enfoque no fue generar código de forma ciega, sino utilizar la IA como un mentor interactivo:
-1. **Diseño y Arquitectura:** Escribí la base y cuestioné cada implementación ("¿Por qué JWT?", "¿Cómo funciona el async/await en React?", "¿Por qué se bloquea la BD para evitar Race Conditions?").
-2. **Desarrollo Iterativo (MVP):** Construí primero la funcionalidad "fea pero segura" y luego apliqué las capas visuales (Tailwind CSS).
-3. **Refactorización Continua:** Separación de lógica y vista, manejo seguro de variables de entorno y optimización de componentes de React.
-
-El objetivo de este repositorio documentar un **proceso de aprendizaje activo**, demostrando mi capacidad para construir soluciones B2B y B2C completas en un flujo de trabajo moderno rodeado de nuevas herramientas.
-
-*Bruno Marino.*
+Proyecto de Bruno Marino para consolidar conocimientos de desarrollo full stack, con asistencia de IA para aprendizaje y programación colaborativa. El enfoque es implementar la funcionalidad, revisar su consistencia y luego mejorar la presentación.
