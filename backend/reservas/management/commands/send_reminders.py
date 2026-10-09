@@ -19,12 +19,12 @@ class Command(BaseCommand):
         turnos_reservados = Reservation.objects.filter(status="confirmed")
         for turno_reservado in turnos_reservados:
             tiempo_faltante = turno_reservado.slot.start_datetime - ahora
-            link_cancelacion = f"http://localhost:3000/confirm/{turno_reservado.confirmation_token}/?cancel=1"
+            link_cancelacion = f"http://localhost:8001/confirm/{turno_reservado.confirmation_token}/?cancel=1"
             #si falta menos de 48 horas pero mas de 24 y ademas es el primer mail enviado automaticamente
-            if tiempo_faltante < limite_48 and tiempo_faltante > limite_24 and turno_reservado.reminder_count == 0:
+            if (limite_24 < tiempo_faltante <= limite_48 and turno_reservado.reminder_count == 0):
                 mensaje_aviso1 = f"""
                 Hola {turno_reservado.patient.first_name},
-                Recuerda asistir a tu reserva con {turno_reservado.slot.business.full_name}, el dia {turno_reservado.slot.start_datetime.strftime('%d/%m/%Y %H:%M')}
+                Recuerda asistir a tu reserva con {turno_reservado.slot.template.business.full_name}, el dia {timezone.localtime(turno_reservado.slot.start_datetime).strftime('%d/%m/%Y %H:%M')}
                 ¡Quedan menos de 48hs!
                 En caso de que no sea posible tu asistencia, porfavor ayudanos cancelando aqui
                 {link_cancelacion}
@@ -39,14 +39,28 @@ class Command(BaseCommand):
                 )
 
                 turno_reservado.reminder_count += 1
-                turno_reservado.save()
+                turno_reservado.last_reminder_sent_at = timezone.now()
+                turno_reservado.save(
+                    update_fields=[
+                        "reminder_count",
+                        "last_reminder_sent_at",
+                    ],
+                )
             
             #si faltan menos de 24 horas pero mas de 0 y ademas es el segundo mail a enviar
-            if tiempo_faltante < limite_24 and tiempo_faltante > timedelta(hours=0) and turno_reservado.reminder_count == 1:
+            elif (
+                timedelta(0) < tiempo_faltante <= limite_24
+                and turno_reservado.reminder_count < 2
+                and (
+                    turno_reservado.last_reminder_sent_at is None
+                    or turno_reservado.last_reminder_sent_at
+                    < turno_reservado.slot.start_datetime - limite_24
+                )
+            ):  
                 
                 mensaje_aviso2 = f"""
                 Hola {turno_reservado.patient.first_name},
-                Recuerda asistir a tu reserva con {turno_reservado.slot.business.full_name}, el dia {turno_reservado.slot.start_datetime.strftime('%d/%m/%Y %H:%M')}
+                Recuerda asistir a tu reserva con {turno_reservado.slot.template.business.full_name}, el dia {timezone.localtime(turno_reservado.slot.start_datetime).strftime('%d/%m/%Y %H:%M')}
                 ¡Quedan menos de 24hs!
                  Insistimos, en caso de que no sea posible tu asistencia, porfavor, ayudanos cancelando aqui
                 {link_cancelacion}
@@ -61,4 +75,10 @@ class Command(BaseCommand):
                 )
 
                 turno_reservado.reminder_count += 1
-                turno_reservado.save()
+                turno_reservado.last_reminder_sent_at = timezone.now()
+                turno_reservado.save(
+                    update_fields=[
+                        "reminder_count",
+                        "last_reminder_sent_at",
+                    ],
+                )

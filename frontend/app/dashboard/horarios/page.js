@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { apiFetch } from '@/app/lib/api'
 
 const DIAS = {
     0: 'Lunes',
@@ -32,15 +33,26 @@ export default function HorariosPage() {
     }, [])
 
     async function cargarTemplates() {
-        const token = localStorage.getItem('token')
         try {
-            const res = await fetch('http://localhost:8001/templates/', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
-            if (res.ok) {
+            const todosLosHorarios = []
+            let url = 'http://localhost:8001/templates/'
+
+            while (url) {
+                const res = await apiFetch(url)
+
+                if (!res.ok) {
+                    throw new Error(
+                        `Error al cargar horarios: ${res.status}`
+                    )
+                }
+
                 const data = await res.json()
-                setTemplates(data.results || data)
+                todosLosHorarios.push(...(data.results ?? data))
+                url = data.next ?? null
             }
+
+            setTemplates(todosLosHorarios)
+
         } catch (error) {
             console.error("Error cargando templates:", error)
         } finally {
@@ -57,8 +69,6 @@ export default function HorariosPage() {
             return
         }
 
-        const token = localStorage.getItem('token')
-
         try {
             // Preparamos el paquete de datos EXACTO que espera Django
             const payload = {
@@ -71,14 +81,16 @@ export default function HorariosPage() {
 
             console.log("Enviando datos...", payload)
 
-            const res = await fetch('http://localhost:8001/templates/', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            })
+            const res = await apiFetch(
+                'http://localhost:8001/templates/',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                }
+            )
 
             if (res.ok) {
                 setMostrandoForm(false)
@@ -98,14 +110,18 @@ export default function HorariosPage() {
 
     const eliminarTemplate = async (id) => {
         if (!confirm("¿Estás seguro de eliminar este horario?")) return;
-        const token = localStorage.getItem('token')
         try {
-            const res = await fetch(`http://localhost:8001/templates/${id}/`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
+            const res = await apiFetch(
+                `http://localhost:8001/templates/${id}/`,
+                {
+                    method: 'DELETE'
+                }
+            )
             if (res.ok) {
                 setTemplates(templates.filter(t => t.id !== id))
+            } else {
+                const error = await res.json()
+                alert(error.detail || "No se pudo eliminar el horario")
             }
         } catch (error) {
             alert("Error al eliminar")

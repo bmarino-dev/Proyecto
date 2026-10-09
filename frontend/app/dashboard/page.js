@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { apiFetch } from '@/app/lib/api'
 
 export default function Dashboard() {
     const [reservas, setReservas] = useState([])
@@ -9,31 +10,35 @@ export default function Dashboard() {
     const [cargando, setCargando] = useState(true)
 
     useEffect(() => {
-        const token = localStorage.getItem('token')
-
         async function cargarDatos() {
-            if (!token) {
-                setCargando(false)
-                return
-            }
-
             try {
                 const [resPerfil, resReservas] = await Promise.all([
-                    fetch('http://localhost:8001/business/me/', {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    }),
-                    fetch('http://localhost:8001/reservations/', {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    })
+                    apiFetch('http://localhost:8001/business/me/'),
+                    apiFetch('http://localhost:8001/reservations/')
                 ])
 
                 if (resPerfil.ok) {
                     setPerfil(await resPerfil.json())
                 }
-                if (resReservas.ok) {
-                    const data = await resReservas.json()
-                    setReservas(data.results || data)
+                const todasLasReservas = []
+                let respuesta = resReservas
+
+                while (respuesta) {
+                    if (!respuesta.ok) {
+                        throw new Error(
+                            `Error al cargar reservas: ${respuesta.status}`
+                        )
+                    }
+
+                    const data = await respuesta.json()
+                    todasLasReservas.push(...(data.results ?? data))
+
+                    respuesta = data.next
+                        ? await apiFetch(data.next)
+                        : null
                 }
+
+                setReservas(todasLasReservas)
             } catch (error) {
                 console.error("Error cargando dashboard", error)
             } finally {

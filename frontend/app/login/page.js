@@ -44,6 +44,7 @@ export default function Login({ params }) {
                 const data = await response.json()
                 //Guardamos el token en la memoria local
                 localStorage.setItem('token', data.access)
+                localStorage.setItem('refresh', data.refresh)
                 //redirigimos al dashboard
                 router.push('/dashboard')
             }

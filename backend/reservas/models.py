@@ -266,12 +266,12 @@ class Reservation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     slot = models.ForeignKey(
         ResourceSlot,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="reservation"
     )
     patient = models.ForeignKey(
         Patient,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="reservations"
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="confirmed")

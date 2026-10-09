@@ -107,10 +107,24 @@ export default function FormularioReserva({ business_id }) {
         setSlotsDelDia([])
 
         try {
-            const url = `http://localhost:8001/public/slots/?business_id=${business_id}&date=${fecha}`
-            const res = await fetch(url, { cache: 'no-store' })
-            const data = await res.json()
-            setSlotsDelDia(data.results ?? data)
+            const todosLosSlots = []
+
+            let url = `http://localhost:8001/public/slots/?business_id=${business_id}&date=${fecha}`
+
+            while (url) {
+                const res = await fetch(url, { cache: 'no-store' })
+
+                if (!res.ok) {
+                    throw new Error(`Error al cargar turnos: ${res.status}`)
+                }
+
+                const data = await res.json()
+
+                todosLosSlots.push(...(data.results ?? data))
+                url = data.next ?? null
+            }
+
+            setSlotsDelDia(todosLosSlots)
         } catch (e) {
             console.error('Error al cargar slots del día:', e)
         } finally {

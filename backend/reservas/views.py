@@ -28,6 +28,7 @@ from django.contrib.auth import get_user_model
 from django.utils.http import urlsafe_base64_decode
 from datetime import timedelta
 from django.db import transaction
+from django.db.models.deletion import ProtectedError
 from .utils import offer_slot_to_waitlist, _is_blackout
 
 User = get_user_model()
@@ -160,6 +161,15 @@ class PatientDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return Patient.objects.filter(business=self.request.user.business_profile)
 
+    def destroy(self, request, *args, **kwargs):
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            return Response(
+                {"detail": "No se puede eliminar el paciente porque tiene reservas asociadas. Su historial debe conservarse."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
 
 class ResourceTemplateListCreateView(generics.ListCreateAPIView):
     """
@@ -184,6 +194,15 @@ class ResourceTemplateDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return ResourceTemplate.objects.filter(business=self.request.user.business_profile)
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            return Response(
+                {"detail": "No se puede eliminar la plantilla porque sus turnos tienen reservas asociadas. Podés desactivarla para conservar el historial."},
+                status=status.HTTP_409_CONFLICT,
+            )
 
 
 class BlackOutDateListCreateView(generics.ListCreateAPIView):

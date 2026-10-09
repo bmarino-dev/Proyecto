@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { apiFetch } from '@/app/lib/api'
 
 export default function AusenciasPage() {
     const [blackoutDates, setBlackoutDates] = useState([])
@@ -20,15 +21,26 @@ export default function AusenciasPage() {
     }, [])
 
     async function cargarBlackouts() {
-        const token = localStorage.getItem('token')
         try {
-            const res = await fetch('http://localhost:8001/blackouts/', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
-            if (res.ok) {
+            const todasLasAusencias = []
+            let url = 'http://localhost:8001/blackouts/'
+
+            while (url) {
+                const res = await apiFetch(url)
+
+                if (!res.ok) {
+                    throw new Error(
+                        `Error al cargar ausencias: ${res.status}`
+                    )
+                }
+
                 const data = await res.json()
-                setBlackoutDates(data.results || data)
+                todasLasAusencias.push(...(data.results ?? data))
+                url = data.next ?? null
             }
+
+            setBlackoutDates(todasLasAusencias)
+
         } catch (error) {
             console.error("Error cargando Blackout Dates:", error)
         } finally {
@@ -38,8 +50,6 @@ export default function AusenciasPage() {
 
     const guardarAusencia = async (e) => {
         e.preventDefault()
-
-        const token = localStorage.getItem('token')
 
         try {
             // Si no hay end_date, mandamos null o el mismo start_date
@@ -57,10 +67,9 @@ export default function AusenciasPage() {
 
             console.log("Enviando datos...", payload)
 
-            const res = await fetch('http://localhost:8001/blackouts/', {
+            const res = await apiFetch('http://localhost:8001/blackouts/', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(payload)
@@ -87,11 +96,9 @@ export default function AusenciasPage() {
 
     const eliminarAusencia = async (id) => {
         if (!confirm("¿Estás seguro de eliminar este día bloqueado?")) return;
-        const token = localStorage.getItem('token')
         try {
-            const res = await fetch(`http://localhost:8001/blackouts/${id}/`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+            const res = await apiFetch(`http://localhost:8001/blackouts/${id}/`, {
+                method: 'DELETE'
             })
             if (res.ok) {
                 setBlackoutDates(blackoutDates.filter(t => t.id !== id))

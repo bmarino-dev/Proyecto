@@ -12,6 +12,10 @@ def job_procesar_waitlist():
     print("Ejecutando proceso de lista de espera...")
     call_command("process_waitlist")
 
+def job_enviar_recordatorios():
+    print("Enviando recordatorios...")
+    call_command("send_reminders")
+
 # Función para generar turnos
 def job_generar_turnos():
     print("Generando turnos de la semana...")
@@ -34,6 +38,16 @@ class Command(BaseCommand):
             job_generar_turnos,
             trigger=CronTrigger(day_of_week="sun", hour=3, minute=0),
             id="generar_turnos_semanales",
+            max_instances=1,
+            replace_existing=True,
+        )
+        scheduler.add_job(
+            job_enviar_recordatorios,
+            trigger=CronTrigger(
+                minute="*/10",
+                timezone=settings.TIME_ZONE,
+            ),
+            id="enviar_recordatorios",
             max_instances=1,
             replace_existing=True,
         )
